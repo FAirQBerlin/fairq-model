@@ -50,7 +50,7 @@ date_min = get_current_local_time().strftime("%Y-%m-%d")
 kfz_percentage = None
 
 # All currently relevant station ids
-station_ids = ["117", "124", "143", "174"]
+station_ids = ["117", "124", "174"]
 
 for station_id in station_ids:
     logging.info(
