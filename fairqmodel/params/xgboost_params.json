@@ -11,6 +11,7 @@
         "eval_metric": [
             "rmse"
         ],
+        "seed": 9151364,
         "n_rounds": 499,
         "monotone_constraints": {
             "kfz_per_hour": 1
@@ -28,6 +29,7 @@
         "eval_metric": [
             "rmse"
         ],
+        "seed": 9151364,
         "n_rounds": 114,
         "monotone_constraints": {
             "kfz_per_hour": 1
@@ -45,6 +47,7 @@
         "eval_metric": [
             "rmse"
         ],
+        "seed": 9151364,
         "n_rounds": 206
     },
     "pm25_solo": {
@@ -59,6 +62,7 @@
         "eval_metric": [
             "rmse"
         ],
+        "seed": 9151364,
         "n_rounds": 39,
         "monotone_constraints": {
             "kfz_per_hour": 1
@@ -76,6 +80,7 @@
         "eval_metric": [
             "rmse"
         ],
+        "seed": 9151364,
         "n_rounds": 58,
         "monotone_constraints": {
             "kfz_per_hour": 1
@@ -93,6 +98,7 @@
         "eval_metric": [
             "rmse"
         ],
+        "seed": 9151364,
         "n_rounds": 162
     },
     "pm10_solo": {
@@ -107,6 +113,7 @@
         "eval_metric": [
             "rmse"
         ],
+        "seed": 9151364,
         "n_rounds": 80,
         "monotone_constraints": {
             "kfz_per_hour": 1
@@ -124,6 +131,7 @@
         "eval_metric": [
             "rmse"
         ],
+        "seed": 9151364,
         "n_rounds": 164,
         "monotone_constraints": {
             "kfz_per_hour": 1
@@ -141,6 +149,7 @@
         "eval_metric": [
             "rmse"
         ],
+        "seed": 9151364,
         "n_rounds": 156
     },
     "dev": {
@@ -151,6 +160,7 @@
         "eval_metric": [
             "rmse"
         ],
+        "seed": 9151364,
         "n_rounds": 9
     }
 }

@@ -9,7 +9,7 @@ def test_get_xgboost_param_output():
     """
     # arrange
     depvar = "no2"
-    target_keys = {"max_depth", "eta", "objective", "nthread", "eval_metric"}
+    target_keys = {"max_depth", "eta", "objective", "nthread", "eval_metric", "seed"}
 
     # act
     res, n_rounds = get_xgboost_param(depvar)
