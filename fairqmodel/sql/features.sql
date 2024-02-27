@@ -151,6 +151,7 @@ dwd_data_mapped as (
     on (cmsd.stadt_x = cmss.stadt_x) and (cmsd.stadt_y = cmss.stadt_y)
   where date_time >= toDateTime(%(date_time_min)s, 'UTC') - interval 2 day -- due due 48 hours lag
   and date_time <= toDateTime(%(date_time_max)s, 'UTC')
+  and toInt16(if(cmss.station_id = '', 0, toInt16(station_id))) in (select station_id from coords)
 
 ),
 
@@ -241,7 +242,7 @@ cams_data_mapped as (
 measuring_stations as (
   select
     date_time,
-    station_id,
+    ms.station_id station_id,
     stadt_x as x,
     stadt_y as y,
     pm10_filled as pm10,
@@ -253,8 +254,9 @@ measuring_stations as (
   from
     messstationen_filled ms final
   inner join
-    coord_mapping_stadt_station
-  on ms.x = station_x and ms.y = station_y
+    coord_mapping_stadt_station on (ms.x = station_x) and (ms.y = station_y)
+  inner join
+    coords on (toInt16(ms.station_id) = coords.station_id)
   where date_time >= toDateTime(%(date_time_min)s, 'UTC')
   and date_time <= toDateTime(%(date_time_max)s, 'UTC')
 )

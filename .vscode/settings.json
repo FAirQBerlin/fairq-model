@@ -55,7 +55,6 @@
     "githubIssues.issueBranchTitle": "feature/${issueNumber}_${sanitizedIssueTitle}",
     "errorLens.messageEnabled": false,
     "cSpell.enabled": true,
-    "[python]": {
-        "editor.defaultFormatter": "ms-python.black-formatter"
-    }
+    "python.testing.pytestArgs": [],
+    "python.testing.unittestEnabled": false
 }

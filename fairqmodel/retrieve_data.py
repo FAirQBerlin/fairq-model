@@ -11,6 +11,13 @@ from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
 
+# debugging
+# mode = "stations"
+# batch = 1
+# date_time_min = pd.Timestamp("2024-01-01 00:00:00")
+# date_time_max = pd.Timestamp("2024-01-02 00:00:00")
+# only_active_stations = False
+
 
 @retry(stop_max_attempt_number=3, wait_fixed=60000)
 def retrieve_data(
@@ -81,7 +88,9 @@ def retrieve_data(
 
 
 def fill_in_date_min_and_max(
-    date_time_min: Optional[pd.Timestamp], date_time_max: Optional[pd.Timestamp], include_future_data: bool
+    date_time_min: Optional[pd.Timestamp],
+    date_time_max: Optional[pd.Timestamp],
+    include_future_data: bool,
 ) -> Tuple[pd.Timestamp, pd.Timestamp]:
     """
     Fill in min and max date if they are None
@@ -137,7 +146,7 @@ def check_number_of_rows(
     expected_rows = n_coords * hours_expected
     if expected_rows != len(dat):
         batch_msg = f" in batch {batch}" if batch is not None else ""
-        msg = f"Expected Rows{batch_msg}: {expected_rows} do not match len(dat) = {len(dat)}"
+        msg = f"Expected Rows{batch_msg}: {expected_rows} do not match len(dat) = {len(dat)} - ok for training"
         logging.warning(msg)
         return False
     else:

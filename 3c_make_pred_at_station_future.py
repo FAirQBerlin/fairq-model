@@ -95,7 +95,7 @@ t_plus_k_params = {
 # Specify the DB target table
 table_name = "model_predictions_temporal"
 
-all_stations = list(dat.station_id.unique())
+all_stations = sorted(list(dat.station_id.unique()))
 logging.info(f"Predictions will be performed for the stations: \n \t {all_stations}")
 
 # Perform the forecast for one station at a time.

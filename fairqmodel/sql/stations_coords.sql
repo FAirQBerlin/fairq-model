@@ -1,8 +1,10 @@
 create temporary table coords (
+    `station_id` Int16,
     `x` Int32,
     `y` Int32
 ) ENGINE = Memory as
 select
+    station_id,
     stadt_x as x,
     stadt_y as y
 from

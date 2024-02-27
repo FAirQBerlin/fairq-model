@@ -13,6 +13,7 @@ from logging_config.logger_config import get_logger_config
 dictConfig(get_logger_config())
 
 
+# debugging with msg = '{"batch_id": 1, "depvar": "no2"}'; mode = "grid"; write_db = False
 def process_batch(msg, write_db: bool = False, mode: Optional[str] = "grid"):
     logging.info(f"Processing message {msg}")
     batch = int(eval(msg)["batch_id"])
