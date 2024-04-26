@@ -1,4 +1,5 @@
 """Helper function to load the logger configuration from json."""
+
 import json
 from pathlib import Path
 

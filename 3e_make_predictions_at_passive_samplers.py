@@ -4,6 +4,7 @@ These predictions are used to be compared with the values measured by the passiv
 as well as the simulated values from the chemical transport model.
 Caution: traffic predictions must be available in the database for the specified time period and grid cells.
 """
+
 import pandas as pd
 
 from fairqmodel.data_preprocessing import cap_outliers, fix_column_types
