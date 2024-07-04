@@ -47,6 +47,7 @@ class ModelWrapper:
         self.feature_cols_1 = feature_cols_1
         self.feature_cols_2 = feature_cols_2
         self.dev = dev
+        self.use_sample_weights = self.depvar in ["pm10", "pm25"]
 
         # Infer settings from provided parameters
         self.is_trained = self.model_1 is not None
@@ -82,8 +83,16 @@ class ModelWrapper:
             return
         logging.info("Start model training")
 
+        weights = np.exp(dat[self.depvar].astype(float) / 40) if self.use_sample_weights else 1
+        dat["sample_weight"] = weights
+
         # Train first stage
-        dmatrix_1 = xgb.DMatrix(dat.loc[:, self.feature_cols_1], label=dat[self.depvar], enable_categorical=True)
+        dmatrix_1 = xgb.DMatrix(
+            dat.loc[:, self.feature_cols_1],
+            label=dat[self.depvar],
+            enable_categorical=True,
+            weight=dat["sample_weight"],
+        )
         self.model_1 = self._train_model_1(dmatrix_1)
 
         # Train second stage
@@ -115,7 +124,10 @@ class ModelWrapper:
             prediction_stage_2 = None
         else:
             assert self.model_2 is not None
-            dmatrix_2 = xgb.DMatrix(dat.loc[:, self.feature_cols_2], enable_categorical=True)
+            dmatrix_2 = xgb.DMatrix(
+                dat.loc[:, self.feature_cols_2],
+                enable_categorical=True,
+            )
             prediction_stage_2 = self.model_2.predict(dmatrix_2)
 
             # Calculate total prediction from both stages and clip negative values to zero
@@ -151,7 +163,12 @@ class ModelWrapper:
 
         prediction = self.model_1.predict(dmatrix_1)
         residual = dat[self.depvar] - prediction
-        dmatrix_2 = xgb.DMatrix(dat.loc[:, self.feature_cols_2], label=residual, enable_categorical=True)
+        dmatrix_2 = xgb.DMatrix(
+            dat.loc[:, self.feature_cols_2],
+            label=residual,
+            enable_categorical=True,
+            weight=dat["sample_weight"],
+        )
 
         model_2 = xgb.train(
             params=self.xgb_param_2,

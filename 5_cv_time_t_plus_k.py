@@ -12,7 +12,7 @@ from logging.config import dictConfig
 
 import pandas as pd
 
-from fairqmodel.build_splits import prepare_folded_input
+from fairqmodel.build_splits import prepare_folded_input, slice_data_frame
 from fairqmodel.command_line_args import get_command_args
 from fairqmodel.create_model_description import create_model_description
 from fairqmodel.data_preprocessing import (
@@ -63,7 +63,7 @@ lags_actual, lags_avg = get_lags(use_lags=use_lags, selected_lags=[24, 48], lags
 
 # Retrieve and pre-process data from the DB
 date_min = pd.Timestamp(get_train_date_min(depvar), tz="Europe/Berlin")
-date_max = pd.Timestamp("2023-01-31", tz="Europe/Berlin")
+date_max = pd.Timestamp("2024-06-25", tz="Europe/Berlin")
 n_train_years = int((date_max - date_min).total_seconds() / (3600 * 24 * 365))
 
 logging.info("Started '5_cv_time_t_plus_k' for {}".format(depvar))
@@ -92,7 +92,12 @@ non_missing_rows = dat.loc[:, depvar].notna()
 dat = dat.loc[non_missing_rows, :].reset_index(drop=True)
 
 # Select variables and fix dtypes
-feature_cols, metric_feature_cols, categorical_feature_cols = get_variables(depvar, lags_actual, lags_avg, dev=dev)
+feature_cols, metric_feature_cols, categorical_feature_cols = get_variables(
+    depvar,
+    lags_actual,
+    lags_avg,
+    dev=dev,
+)
 
 dat = fix_column_types(dat, categorical_feature_cols, metric_feature_cols)
 
@@ -117,6 +122,18 @@ logging.info(f"date_time_training_execution: '{date_time_training_execution}'")
 # This loop evaluates the quality of temporal predictions
 loop_idx = 0
 for fold in reversed(time_cv_folds):
+    fold["test"] = slice_data_frame(
+        dat,
+        lower_bound=fold["test_window_cut_min_modified"],
+        upper_bound=fold["test_window_cut_max"],
+    )
+
+    fold["train"] = slice_data_frame(
+        dat,
+        lower_bound=fold["train_window_cut_min"],
+        upper_bound=fold["test_window_cut_min_modified"],
+    )
+
     # Train a model only every x iterations
     if (loop_idx) % train_shift == 0:
         dat_train = fold["train"]
@@ -165,10 +182,14 @@ for fold in reversed(time_cv_folds):
         # Reorder columns
         df_predictions = df_predictions[["model_id", "date_time_forecast", "date_time", "station_id", "value"]]
 
-        send_data_clickhouse(df=df_predictions, table_name="model_predictions_temporal_cv", mode="replace")
+        send_data_clickhouse(
+            df=df_predictions,
+            table_name="model_predictions_temporal_cv",
+            mode="replace",
+        )
     loop_idx += 1
 
 
 script_end_time = time.time()
 total_time = (script_end_time - script_start_time) // 60
-logging.info("Finished script in total time of ~ {total_time} minutes.")
+logging.info(f"Finished script in total time of ~ {total_time} minutes.")

@@ -5,7 +5,7 @@ import numpy as np
 import optuna
 from optuna.samplers import TPESampler
 
-from fairqmodel.build_splits import prepare_folded_input
+from fairqmodel.build_splits import prepare_folded_input, slice_data_frame
 from fairqmodel.data_preprocessing import cap_high_values
 from fairqmodel.db_connect import db_connect_target, get_query
 from fairqmodel.feature_selection import assign_features_to_stage
@@ -294,6 +294,18 @@ def manual_cv_t_plus_k(
 
     loop_idx = 0
     for fold in reversed(time_cv_folds):
+        fold["test"] = slice_data_frame(
+            dat,
+            lower_bound=fold["test_window_cut_min_modified"],
+            upper_bound=fold["test_window_cut_max"],
+        )
+
+        fold["train"] = slice_data_frame(
+            dat,
+            lower_bound=fold["train_window_cut_min"],
+            upper_bound=fold["test_window_cut_min_modified"],
+        )
+
         train_model = (loop_idx) % t_plus_k_params["train_shift"] == 0
 
         if train_model:

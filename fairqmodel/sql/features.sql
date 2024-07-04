@@ -117,6 +117,20 @@ dwd_data_mapped as (
 		cloud_cover,
 		pressure_msl,
 		sunshine,
+    round((1 - sigmoid(temperature - 13.5)) * (1 - sigmoid(precipitation * 80 - 6)) *
+          (1- sigmoid(wind_speed / 2 - 7.5)) * sigmoid(pressure_msl / 2 - 503) *
+          sigmoid((sunshine / 6) - 3), 2) as inversion,
+    sum(inversion) over (partition by (x, y) ORDER BY date_time asc Rows Between 11 PRECEDING AND CURRENT ROW) as cumInverion12,
+    sum(inversion) over (partition by (x, y) ORDER BY date_time asc Rows Between 23 PRECEDING AND CURRENT ROW) as cumInverion24,
+    sum(inversion) over (partition by (x, y) ORDER BY date_time asc Rows Between 47 PRECEDING AND CURRENT ROW) as cumInverion48,
+    lagInFrame(inversion, 4) OVER (PARTITION BY (x, y) ORDER BY date_time ASC ROWS
+                 BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as inversion_la4,
+    lagInFrame(inversion, 8) OVER (PARTITION BY (x, y) ORDER BY date_time ASC ROWS
+                 BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as inversion_la8,
+    lagInFrame(inversion, 24) OVER (PARTITION BY (x, y) ORDER BY date_time ASC ROWS
+                 BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as inversion_la24,
+    lagInFrame(inversion, 48) OVER (PARTITION BY (x, y) ORDER BY date_time ASC ROWS
+                 BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as inversion_la48,
     lagInFrame(wind_direction, 4) OVER (PARTITION BY (x, y) ORDER BY date_time ASC ROWS
                  BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) as wind_direction_la4,
     lagInFrame(wind_direction, 8) OVER (PARTITION BY (x, y) ORDER BY date_time ASC ROWS
@@ -285,6 +299,7 @@ SELECT
   cloud_cover,
   pressure_msl,
   sunshine,
+  inversion,
   type_school_holiday,
   is_public_holiday,
   grauflaeche,
@@ -370,6 +385,13 @@ SELECT
   wavg_pm25_la24,
   wavg_pm25_la48,
   wavg_pm25_la72,
+  inversion_la4,
+  inversion_la8,
+  inversion_la24,
+  inversion_la48,
+  cumInverion12,
+  cumInverion24,
+  cumInverion48,
   wind_direction_la4,
   wind_direction_la8,
   wind_direction_la24,

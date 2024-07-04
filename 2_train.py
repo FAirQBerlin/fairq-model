@@ -73,7 +73,8 @@ dat_original = dat_original.loc[non_missing_rows, :].reset_index(drop=True)
 # Create time features for each data point
 dat = time_features(dat_original.copy(deep=True), depvar=depvar, lags_actual=lags_actual, lags_avg=lags_avg)
 
-dat = fix_column_types(dat, categorical_feature_cols, metric_feature_cols)
+dat = fix_column_types(dat.copy(deep=True), categorical_feature_cols, metric_feature_cols)
+
 
 # Train model
 date_time_training_execution = get_current_local_time()

@@ -66,7 +66,15 @@
             "pressure_msl_la8",
             "pressure_msl_la24",
             "pressure_msl_la48",
-            "year"
+            "year",
+            "inversion",
+            "cumInverion12",
+            "cumInverion24",
+            "cumInverion48",
+            "inversion_la4",
+            "inversion_la8",
+            "inversion_la24",
+            "inversion_la48"
         ],
         "categoric": [
             "weekday",
@@ -133,7 +141,15 @@
             "pressure_msl_la8",
             "pressure_msl_la24",
             "pressure_msl_la48",
-            "year"
+            "year",
+            "inversion",
+            "cumInverion12",
+            "cumInverion24",
+            "cumInverion48",
+            "inversion_la4",
+            "inversion_la8",
+            "inversion_la24",
+            "inversion_la48"
         ],
         "categoric": [
             "weekday",
@@ -200,7 +216,15 @@
             "pressure_msl_la8",
             "pressure_msl_la24",
             "pressure_msl_la48",
-            "year"
+            "year",
+            "inversion",
+            "cumInverion12",
+            "cumInverion24",
+            "cumInverion48",
+            "inversion_la4",
+            "inversion_la8",
+            "inversion_la24",
+            "inversion_la48"
         ],
         "categoric": [
             "weekday",
@@ -245,7 +269,15 @@
             "precipitation_la8",
             "precipitation_la24",
             "precipitation_la48",
-            "cloud_cover"
+            "cloud_cover",
+            "inversion",
+            "cumInverion12",
+            "cumInverion24",
+            "cumInverion48",
+            "inversion_la4",
+            "inversion_la8",
+            "inversion_la24",
+            "inversion_la48"
         ]
     }
 }

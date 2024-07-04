@@ -68,27 +68,45 @@ def prepare_folded_input(
         if include_current_time_point:
             test_window_cut_min_modified -= pd.Timedelta("1 hours")
 
-        ts_cv_dat_test = dat.loc[
-            (dat.date_time > test_window_cut_min_modified) & (dat.date_time <= test_window_cut_max),
-            :,
-        ]
-
-        ts_cv_dat_train = dat.loc[
-            (dat.date_time > train_window_cut_min) & (dat.date_time <= test_window_cut_min_modified),
-            :,
-        ]
-
         # Store all fold details
         time_cv_folds.append(
             {
                 "ts_fold_id": cv_window_idx,
-                "ts_fold_max_train_date": test_window_cut_min.tz_localize(tz="UTC").tz_convert(tz="Europe/Berlin"),
-                "ts_fold_max_test_date": test_window_cut_max.tz_localize(tz="UTC").tz_convert(tz="Europe/Berlin"),
-                "train": ts_cv_dat_train,
-                "test": ts_cv_dat_test,
-            }
+                "ts_fold_max_train_date": convert_to_local_time(test_window_cut_min),
+                "ts_fold_max_test_date": convert_to_local_time(test_window_cut_max),
+                "train_window_cut_min": train_window_cut_min,
+                "test_window_cut_min_modified": test_window_cut_min_modified,
+                "test_window_cut_max": test_window_cut_max,
+            },
         )
     return time_cv_folds
+
+
+def convert_to_local_time(time_stamp):
+    return time_stamp.tz_localize(tz="UTC").tz_convert(
+        tz="Europe/Berlin",
+    )
+
+
+def slice_data_frame(
+    dat: pd.DataFrame,
+    lower_bound: datetime,
+    upper_bound: datetime,
+    slice_column: str = "date_time",
+) -> pd.DataFrame:
+    """Slices the DataFrame between the lower and upper bound.
+
+    :param dat: pd.DataFrame, Data to slice
+    :param lower_bound: datetime, Lower bound of the slice
+    :param upper_bound: datetime, Upper bound of the slice
+    :param slice_column: str, Column to slice the DataFrame on
+
+    :return: pd.DataFrame, Sliced DataFrame
+    """
+    return dat.loc[
+        (dat[slice_column] > lower_bound) & (dat[slice_column] <= upper_bound),
+        :,
+    ]
 
 
 def set_prediction_hour(prediction_hour: int, max_date: datetime, prediction_window_size: int) -> datetime:

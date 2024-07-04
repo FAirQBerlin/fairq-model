@@ -5,7 +5,7 @@ from typing import List
 
 import pandas as pd
 
-from fairqmodel.build_splits import prepare_folded_input
+from fairqmodel.build_splits import prepare_folded_input, slice_data_frame
 from fairqmodel.db_connect import send_data_clickhouse
 from fairqmodel.model_wrapper import ModelWrapper
 from fairqmodel.prediction_lag_adjusted import make_lag_adjusted_prediction
@@ -69,6 +69,17 @@ def prediction_t_plus_k(
     )
 
     for fold in time_folds:
+        fold["test"] = slice_data_frame(
+            dat,
+            lower_bound=fold["test_window_cut_min_modified"],
+            upper_bound=fold["test_window_cut_max"],
+        )
+
+        fold["train"] = slice_data_frame(
+            dat,
+            lower_bound=fold["train_window_cut_min"],
+            upper_bound=fold["test_window_cut_min_modified"],
+        )
         if verbose:
             logging.info(f"Currently predicting fold {fold['ts_fold_id']}/{len(time_folds)}")
             logging.info(f"date_time_forecast: {fold['ts_fold_max_train_date'].strftime('%Y-%m-%d %H:%M:%S')}")

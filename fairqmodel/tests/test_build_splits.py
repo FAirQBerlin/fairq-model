@@ -18,29 +18,23 @@ def test_prepare_folded_input():
     n_train_years = 1
     test_window_size = 24
     step_size = 12
-    n_train_hours = n_train_years * 365 * 24
 
     target_keys = {
         "ts_fold_id",
         "ts_fold_max_train_date",
         "ts_fold_max_test_date",
-        "train",
-        "test",
+        "train_window_cut_min",
+        "test_window_cut_min_modified",
+        "test_window_cut_max",
     }
 
     # Act
     res = prepare_folded_input(dat, n_windows, n_train_years, test_window_size, step_size)
-    res_2 = prepare_folded_input(
-        dat, n_windows, n_train_years, test_window_size, step_size, include_current_time_point=True
-    )
 
     # Assert
     assert isinstance(res, list)
     assert all(isinstance(x, dict) for x in res)
-    assert all(set(x.keys()) == target_keys for x in res)
-    assert all(x["train"].shape[0] <= n_train_hours for x in res)  # smaller equal to account for missing data
-    assert all(x["test"].shape[0] <= test_window_size for x in res)  # smaller equal to account for missing data
-    assert all(x["test"].shape[0] <= test_window_size + 1 for x in res_2)  # smaller equal to account for missing data
+    assert all([set(x.keys()) == target_keys for x in res])
     assert all(
         x["ts_fold_max_test_date"] - x["ts_fold_max_train_date"] == timedelta(hours=test_window_size) for x in res
     )
