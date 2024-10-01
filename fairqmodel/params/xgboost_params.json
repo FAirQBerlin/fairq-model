@@ -18,19 +18,20 @@
         }
     },
     "no2_stage_1": {
-        "eta": 0.030,
+        "eta": 0.0218,
         "max_depth": 13,
-        "gamma": 0.001,
-        "min_child_weight": 82,
-        "subsample": 0.756,
-        "colsample_bytree": 0.855,
+        "gamma": 7.946,
+        "min_child_weight": 73,
+        "subsample": 0.87,
+        "colsample_bytree": 0.6059,
+        "lambda": 0.0000001,
         "objective": "reg:squarederror",
-        "nthread": 8,
+        "nthread": 12,
         "eval_metric": [
             "rmse"
         ],
         "seed": 9151364,
-        "n_rounds": 114,
+        "n_rounds": 113,
         "monotone_constraints": {
             "kfz_per_hour": 1
         }
@@ -42,8 +43,9 @@
         "min_child_weight": 55,
         "subsample": 0.871,
         "colsample_bytree": 0.926,
+        "lambda": 1,
         "objective": "reg:squarederror",
-        "nthread": 8,
+        "nthread": 12,
         "eval_metric": [
             "rmse"
         ],

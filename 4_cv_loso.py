@@ -11,7 +11,7 @@ import logging
 from logging.config import dictConfig
 
 import pandas as pd
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
 
 from fairqmodel.command_line_args import get_command_args
 from fairqmodel.create_model_description import create_model_description
@@ -50,7 +50,7 @@ id_type_mapping = dict(zip(id_type_mapping_df.id, id_type_mapping_df.stattyp))
 date_min = get_train_date_min(depvar)
 
 
-date_max = "2023-11-27 01:00:00"
+date_max = "2024-07-01 00:00:00"
 
 logging.info("Started '4_cv_loso' for {} for time frame: [{}, {}]".format(depvar, date_min, date_max))
 
@@ -114,7 +114,7 @@ for station_id in all_station_ids:
     predictions, pred_stage_1, pred_stage_2 = models.predict(dat_test)
     label = dat_test[depvar].tolist()
 
-    rmse = mean_squared_error(label, predictions, squared=False)
+    rmse = root_mean_squared_error(label, predictions)
     mae = mean_absolute_error(label, predictions)
     r2 = r2_score(label, predictions)
 

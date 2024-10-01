@@ -131,6 +131,11 @@ def hyper_opt(
                 params["min_child_weight"][0],
                 params["min_child_weight"][1],
             ),
+            "lambda": trial.suggest_loguniform(
+                "lambda",
+                params["lambda"][0],
+                params["lambda"][1],
+            ),
             "nthread": n_cores,
         }
         if optimize_stage == 1:
@@ -188,6 +193,7 @@ def hyper_opt(
             "min_child_weight": params_previous["min_child_weight"],
             "subsample": params_previous["subsample"],
             "colsample_bytree": params_previous["colsample_bytree"],
+            "lambda": params_previous["lambda"],
         }
     )
 

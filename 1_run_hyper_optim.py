@@ -21,7 +21,7 @@ depvar = get_command_args("depvar") or "no2"  # no2, pm10, pm25
 # Get data from the DB
 date_min = get_train_date_min(depvar)
 
-date_max = "2022-02-28 01:00:00"
+date_max = "2024-08-31 01:00:00"
 
 dat = retrieve_data(
     mode="stations",
@@ -56,7 +56,7 @@ first_stage_model_id = model_id_dict[depvar] if use_two_stages else None
 # Set parameters for the t+k evaluation
 n_train_years = 5
 n_cv_windows = 365  # On how many windows the parameters will be evaluated
-n_pred_days = 4  # Size of each evaluation window
+n_pred_days = 1  # Size of each evaluation window
 step_size = 24  # How much each evaluation window is shifted against the previous one
 train_shift = 30  # Number of evaluation windows that predicted by the same model
 prediction_hour = 14  # Hour of the day when the prediction is performed
@@ -78,7 +78,7 @@ t_plus_k_params = {
 
 num_boost_round = 500 if not dev else 50  # to increase speed in development
 max_minutes = 60 * 24
-n_cores = 8
+n_cores = 24
 
 lag_options, lags_avg = get_lag_options(use_lags, lags_avg=[1, 2, 3, 4, 5])
 
@@ -87,12 +87,13 @@ lag_options, lags_avg = get_lag_options(use_lags, lags_avg=[1, 2, 3, 4, 5])
 # The structure is as follows: "hyper-parameter": [lower_bound, upper_bound].
 # Currently, only the following hyper-parameters can be optimized:
 params = {
-    "eta": [0.02, 0.4],
-    "max_depth": [5, 13],
-    "gamma": [1e-7, 5],
-    "min_child_weight": [50, 300],
-    "subsample": [0.75, 0.95],  # sample 80% of the rows
-    "colsample_bytree": [0.75, 0.95],  # sample 80% of the feature columns
+    "eta": [0.02, 0.2],
+    "max_depth": [8, 13],
+    "gamma": [1e-7, 20],
+    "min_child_weight": [5, 300],
+    "subsample": [0.50, 0.9],  # sample 80% of the rows
+    "colsample_bytree": [0.50, 0.9],  # sample 80% of the feature columns
+    "lambda": [1e-7, 20],
 }
 
 if use_lags and optimize_lags:
@@ -146,10 +147,10 @@ res_hyper_opt = hyper_opt(
     max_minutes=max_minutes,
     study_name=study_name,
     n_cores=n_cores,
-    early_stopping_rounds=50,
+    early_stopping_rounds=25,
     n_trials=None,
     silence=False,
-    seed=123,
+    seed=364117,
     t_plus_k_params=t_plus_k_params,
     storage=True,
     use_lags=use_lags,

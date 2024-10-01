@@ -63,7 +63,8 @@ def db_connect_target() -> Client:
 
 def get_query(query: str, parametrized_tables: Optional[dict] = None) -> str:
     """
-    Return query result as string.
+    Return query result as string. Database prefixes fairq_output and fairq_features are replaced
+    with fairq_prod_output and fairq_prod_features if the parameter MODE in .env is set to PROD.
 
     :param query: query string
     :param parametrized_tables: optional dictionary of tables which are parametrized in the query via {table_name}

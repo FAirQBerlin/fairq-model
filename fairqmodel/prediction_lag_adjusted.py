@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
 
 from fairqmodel.model_wrapper import ModelWrapper
 from logging_config.logger_config import get_logger_config
@@ -70,7 +70,7 @@ def make_lag_adjusted_prediction(
         predictions = all_results.pred
         label = all_results.loc[:, depvar]
 
-        rmse = mean_squared_error(label, predictions, squared=False)
+        rmse = root_mean_squared_error(label, predictions)
         mae = mean_absolute_error(label, predictions)
         r2 = r2_score(label, predictions)
 
@@ -247,7 +247,7 @@ def get_eval_metrics(loop_results: List[dict], depvar: str) -> pd.DataFrame:
             {
                 "time_point": loop_res["time_point"],
                 "mae": mean_absolute_error(y_actual, y_predicted),
-                "rmse": mean_squared_error(y_actual, y_predicted, squared=False),
+                "rmse": root_mean_squared_error(y_actual, y_predicted),
                 "r_squared": r2_score(y_actual, y_predicted),
             },
         )
@@ -261,7 +261,7 @@ def get_eval_metrics(loop_results: List[dict], depvar: str) -> pd.DataFrame:
         {
             "time_point": "all",
             "mae": mean_absolute_error(y_all_actual, y_all_predicted),
-            "rmse": mean_squared_error(y_all_actual, y_all_predicted, squared=False),
+            "rmse": root_mean_squared_error(y_all_actual, y_all_predicted),
             "r_squared": r2_score(y_all_actual, y_all_predicted),
         },
         index=[0],

@@ -273,6 +273,17 @@ measuring_stations as (
     coords on (toInt16(ms.station_id) = coords.station_id)
   where date_time >= toDateTime(%(date_time_min)s, 'UTC')
   and date_time <= toDateTime(%(date_time_max)s, 'UTC')
+),
+
+-- latest jahresmittelwertkarte
+no2_yearly_avg as (
+  select
+    x,
+    y,
+    pred no2_map
+  from
+    fairq_output.model_predictions_passive
+where forecast_date = (select max(forecast_date) from fairq_output.model_predictions_passive)
 )
 
 SELECT
@@ -314,6 +325,7 @@ SELECT
   nox_h_15 as nox_h,
   nox_i_15 as nox_i,
   nox_v_gn15 as nox_v,
+  no2_map as no2_map,
   pm10_i_15 as pmx_i,
   kfz_per_hour_la4,
   kfz_per_hour_la8,
@@ -421,6 +433,9 @@ left join
 left join
   statdstruktur_features as land
   ON (dwd.x = land.x) AND (dwd.y = land.y)
+left join
+  no2_yearly_avg
+  on (dwd.x = no2_yearly_avg.x) and (dwd.y = no2_yearly_avg.y)
 left join
   measuring_stations ms
   on (dwd.date_time = ms.date_time) and (dwd.x = ms.x) and (dwd.y = ms.y)
