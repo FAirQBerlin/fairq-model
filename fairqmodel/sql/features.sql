@@ -107,7 +107,7 @@ coord_mapping_stadt_dwd as (
 dwd_data_mapped as (
   SELECT
     date_time,
-    case when station_id = '' then NULL else station_id end as station_id,
+    case when cmss.station_id = 0 then NULL else leftPad(toString(cmss.station_id), 3, '0') end as station_id,
     cmsd.stadt_x as x,
     cmsd.stadt_y as y,
     wind_direction,
@@ -160,12 +160,11 @@ dwd_data_mapped as (
   INNER JOIN
     coord_mapping_stadt_dwd cmsd
     on (dofc.x = cmsd.dwd_x) AND (dofc.y = cmsd.dwd_y)
-  LEFT JOIN
-    coord_mapping_stadt_station cmss
-    on (cmsd.stadt_x = cmss.stadt_x) and (cmsd.stadt_y = cmss.stadt_y)
+  inner JOIN
+    coords cmss
+    on (cmsd.stadt_x = cmss.x) and (cmsd.stadt_y = cmss.y)
   where date_time >= toDateTime(%(date_time_min)s, 'UTC') - interval 2 day -- due due 48 hours lag
   and date_time <= toDateTime(%(date_time_max)s, 'UTC')
-  and toInt16(if(cmss.station_id = '', 0, toInt16(station_id))) in (select station_id from coords)
 
 ),
 
