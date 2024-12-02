@@ -12,7 +12,7 @@ dictConfig(get_logger_config())
 
 model_type = get_command_args("model_type") or "grid"
 topic = f"fairq-model-pred-{model_type.replace('_', '-')}"
-broker = f"kafka.{mode().lower()}.inwt.de:443"
+broker = f"kafka.{mode().lower()}.cld.htz.int.inwt.de:443"
 
 p = Producer({"bootstrap.servers": broker, "security.protocol": "ssl", "enable.ssl.certificate.verification": "false"})
 logging.info("Kafka Producer has been initiated...")

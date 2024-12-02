@@ -22,7 +22,7 @@ signal.signal(signal.SIGTERM, sigterm_handler)
 
 model_type = get_command_args("model_type") or "grid"
 topic = f"fairq-model-pred-{model_type.replace('_', '-')}"
-broker = f"kafka.{mode().lower()}.inwt.de:443"
+broker = f"kafka.{mode().lower()}.cld.htz.int.inwt.de:443"
 write_db = get_command_args("write_db") or False
 
 c = Consumer(
