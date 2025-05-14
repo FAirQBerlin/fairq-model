@@ -1,8 +1,6 @@
 {
     "no2_var": {
         "metric": [
-            "x",
-            "y",
             "doy_scaled",
             "kfz_per_hour",
             "velocity",
@@ -86,8 +84,6 @@
     },
     "pm10_var": {
         "metric": [
-            "x",
-            "y",
             "doy_scaled",
             "kfz_per_hour",
             "velocity",
@@ -161,8 +157,6 @@
     },
     "pm25_var": {
         "metric": [
-            "x",
-            "y",
             "doy_scaled",
             "kfz_per_hour",
             "velocity",
@@ -246,8 +240,6 @@
             "kfz_per_hour",
             "velocity",
             "traffic_intensity_kfz",
-            "x",
-            "y",
             "grauflaeche",
             "gruenflaeche",
             "infrastruktur",

@@ -14,6 +14,7 @@ from logging.config import dictConfig
 import numpy as np
 import pandas as pd
 
+import fairqmodel as fqm
 from fairqmodel.command_line_args import get_command_args
 from fairqmodel.data_preprocessing import cap_outliers, drop_stations_without_this_depvar, fix_column_types
 from fairqmodel.db_connect import db_connect_target, get_query
@@ -26,6 +27,8 @@ from fairqmodel.time_handling import get_model_start_time, timestamp_to_np_datet
 from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
+
+logging.info("Using fairqmodel in version: {}".format(fqm.__version__))
 
 # Configuration
 DEV = False

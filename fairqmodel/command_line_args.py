@@ -9,10 +9,14 @@ dictConfig(get_logger_config())
 
 def get_command_args(argument):
     argument_val = [arg for arg in sys.argv if argument in arg]
+
     if argument_val == []:
         argument_val = None
     else:
         argument_val = argument_val[0].split("=")[1]
+
+        if argument == "msg":
+            return argument_val
 
         if argument_val in ["True", "False"]:
             argument_val = bool(eval(argument_val))

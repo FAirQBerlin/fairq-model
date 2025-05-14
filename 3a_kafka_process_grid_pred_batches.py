@@ -4,12 +4,15 @@ from logging.config import dictConfig
 
 from confluent_kafka import Consumer
 
+import fairqmodel as fqm
 from fairqmodel.command_line_args import get_command_args
 from fairqmodel.db_connect import mode
 from fairqmodel.process_batch import process_batch
 from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
+
+logging.info("Using fairqmodel in version: {}".format(fqm.__version__))
 
 
 def sigterm_handler(signal, frame):

@@ -10,6 +10,7 @@ This script is e.g. used to emulate or suggest kfz-reductions such that limit va
 import logging
 from logging.config import dictConfig
 
+import fairqmodel as fqm
 from fairqmodel.command_line_args import get_command_args
 from fairqmodel.db_connect import db_connect_target, get_query
 from fairqmodel.prediction_kfz_adjusted import prediction_kfz_adjusted
@@ -19,6 +20,8 @@ from fairqmodel.time_handling import get_current_local_time
 from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
+
+logging.info("Using fairqmodel in version: {}".format(fqm.__version__))
 
 # Select general settings
 depvar = get_command_args("depvar") or "no2"

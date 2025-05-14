@@ -8,6 +8,7 @@ from logging.config import dictConfig
 
 import pandas as pd
 
+import fairqmodel as fqm
 from fairqmodel.command_line_args import get_command_args
 from fairqmodel.create_model_description import create_model_description
 from fairqmodel.data_preprocessing import cap_high_values, cap_outliers, fix_column_types
@@ -21,6 +22,8 @@ from fairqmodel.time_handling import get_current_local_time
 from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
+
+logging.info("Using fairqmodel in version: {}".format(fqm.__version__))
 
 # passed command args sample: ['filename.py', 'depvar=no2', 'use_lags=True','update_models_final=True']
 depvar = get_command_args("depvar") or "no2"
