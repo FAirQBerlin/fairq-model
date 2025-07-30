@@ -176,8 +176,8 @@ for fold in reversed(time_cv_folds):
         df_predictions["model_id"] = model_id
 
         # Convert date columns to unix format
-        df_predictions.loc[:, "date_time"] = to_unix(df_predictions["date_time"])
-        df_predictions.loc[:, "date_time_forecast"] = to_unix(df_predictions["date_time_forecast"])
+        df_predictions["date_time"] = to_unix(df_predictions["date_time"])
+        df_predictions["date_time_forecast"] = to_unix(df_predictions["date_time_forecast"])
 
         # Reorder columns
         df_predictions = df_predictions[["model_id", "date_time_forecast", "date_time", "station_id", "value"]]

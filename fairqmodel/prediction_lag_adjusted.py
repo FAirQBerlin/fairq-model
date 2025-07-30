@@ -188,7 +188,7 @@ def fill_lags_with_previous_predictions(
     if len(lags_avg) > 0:
         cols = [f"{depvar}_lag{x}" for x in lags_avg]
         col_name = f"lag_avg_{sorted(lags_avg)}".replace("[", "(").replace("]", ")")
-        row_for_pred.loc[:, col_name] = row_for_pred.loc[:, cols].mean(axis=1)
+        row_for_pred.loc[:, col_name] = row_for_pred.loc[:, cols].mean(axis=1).astype("float64")
 
     return row_for_pred
 

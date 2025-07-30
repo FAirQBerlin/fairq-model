@@ -76,23 +76,23 @@ dwd_obs_and_forecasts as (
     fairq_raw.dwd_forecasts_processed dwd final
   where date_time >= toDateTime(%(date_time_min)s, 'UTC') - interval 2 day -- due due 48 hours lag
   and date_time <= toDateTime(%(date_time_max)s, 'UTC')
-  union all
-  select
-    date_time,
-    x,
-    y,
-    wind_direction_filled AS wind_direction,
-    wind_speed_filled AS wind_speed,
-    precipitation_filled AS precipitation,
-    temperature_filled AS temperature,
-    cloud_cover_filled AS cloud_cover,
-    pressure_msl_filled AS pressure_msl,
-    sunshine_filled AS sunshine
-  from
-    dwd_observations_filled
-  where date_time >= toDateTime(%(date_time_min)s, 'UTC') - interval 2 day -- due due 48 hours lag
-  and date_time <= toDateTime(%(date_time_max)s, 'UTC')
-  and date_time < (select min(date_time) as date_first_forecast from fairq_raw.dwd_forecasts_processed)
+  -- union all
+  -- select
+  --   date_time,
+  --   x,
+  --   y,
+  --   wind_direction_filled AS wind_direction,
+  --   wind_speed_filled AS wind_speed,
+  --   precipitation_filled AS precipitation,
+  --   temperature_filled AS temperature,
+  --   cloud_cover_filled AS cloud_cover,
+  --   pressure_msl_filled AS pressure_msl,
+  --   sunshine_filled AS sunshine
+  -- from
+  --   dwd_observations_filled
+  -- where date_time >= toDateTime(%(date_time_min)s, 'UTC') - interval 2 day -- due due 48 hours lag
+  -- and date_time <= toDateTime(%(date_time_max)s, 'UTC')
+  -- and date_time < (select min(date_time) as date_first_forecast from fairq_raw.dwd_forecasts_processed)
 ),
 
 -- Latest dwd forecasts, mapped onto grid coordinates and station coordinates

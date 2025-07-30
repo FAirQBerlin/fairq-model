@@ -59,8 +59,8 @@ if write_db:
     df_for_db = df_for_db.loc[:, ["model_id", "date_time_forecast", "date_time", "x", "y", "value"]]
 
     # Convert date columns to unix format
-    df_for_db.loc[:, "date_time"] = to_unix(df_for_db["date_time"])
-    df_for_db.loc[:, "date_time_forecast"] = to_unix(df_for_db["date_time_forecast"])
+    df_for_db["date_time"] = to_unix(df_for_db["date_time"])
+    df_for_db["date_time_forecast"] = to_unix(df_for_db["date_time_forecast"])
 
     # Send results to the DB
     send_data_clickhouse(df=df_for_db, table_name="model_predictions_passive_samplers", mode="insert")

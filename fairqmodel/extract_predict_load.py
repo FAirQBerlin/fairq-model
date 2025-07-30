@@ -143,13 +143,13 @@ def write_preds_to_db(df_for_db: pd.DataFrame, table_name: str) -> bool:
 
     return: bool True if succeeded, false otherwise
     """
-    logging.info(f"Preparing to send to db first_date_time = {min(df_for_db.loc[:,'date_time'])}")
-    logging.info(f"Preparing to send to db date_time_forecast = {df_for_db.loc[0,'date_time_forecast']}")
-    logging.info(f"Preparing to send to db last_date_time = {max(df_for_db.loc[:,'date_time'])}")
+    logging.info(f"Preparing to send to db first_date_time = {min(df_for_db.loc[:, 'date_time'])}")
+    logging.info(f"Preparing to send to db date_time_forecast = {df_for_db.loc[0, 'date_time_forecast']}")
+    logging.info(f"Preparing to send to db last_date_time = {max(df_for_db.loc[:, 'date_time'])}")
 
     # Convert date columns to unix format
-    df_for_db.loc[:, "date_time"] = to_unix(df_for_db["date_time"])
-    df_for_db.loc[:, "date_time_forecast"] = to_unix(df_for_db["date_time_forecast"])
+    df_for_db["date_time"] = to_unix(df_for_db["date_time"])
+    df_for_db["date_time_forecast"] = to_unix(df_for_db["date_time_forecast"])
 
     logging.info("Writing predictions to DB")
 
@@ -157,20 +157,3 @@ def write_preds_to_db(df_for_db: pd.DataFrame, table_name: str) -> bool:
     send_ok = send_data_clickhouse(df=df_for_db, table_name=table_name, mode="insert")
 
     return send_ok
-
-
-def get_batches_to_reschedule(reporting: list[dict]):
-    """
-    Get batches that have never been successful in the reporting list.
-    Batches that have been successful once, and once (or several times) not, do not get rescheduled
-
-    :param reporting: list(dict('batch': batch, 'finished': True)) reporting list of dictionaries,
-    each dict is returned by extract_predict_load and indicates the 'batch' and if it 'finished' successfully.
-
-    return: list of batch ids to reschedule
-    """
-
-    successful_batches = [batch["batch"] for batch in reporting if batch["finished"] is True]
-    reschedule = [batch["batch"] for batch in reporting if batch["batch"] not in successful_batches]
-
-    return reschedule

@@ -16,11 +16,11 @@ This repo contains the Python code of the entire life cycle of the air quality m
 - Create an `.env` file in the project folder, see env_template for the structure (Note: The database containing all features such as the weather and traffic data must be created previously, see https://github.com/fairqBerlin/fairq-data/tree/public/inst/db.)
 - Install required packages from the Pipfile by running
 ```shell
-pipenv install
+poetry install
 ```
-- Activate the local environment with
+- Activate the local environment with the command printed after executing:
 ```shell
-pipenv shell
+poetry env activate
 ```
 
 ## Executable Scripts
@@ -41,14 +41,14 @@ The relevant code can be found in `1_run_hyper_optim.py`.
 
 Start the hyperparameter optimization with:
 ```shell
-pipenv run python 1_run_hyper_optim.py
+poetry run python 1_run_hyper_optim.py
 ```
 
 The HPO trials are saved to a file named `optuna_hpo_studies.db`.
 
 You can monitor the running trials by starting the optuna dashboard with this file:
 ```shell
-pipenv run optuna-dashboard sqlite:///optuna_hpo_studies.db  --port 8080
+poetry run optuna-dashboard sqlite:///optuna_hpo_studies.db  --port 8080
 ```
 
 ### Model Training
@@ -56,7 +56,7 @@ The model training script can be used to train a new model, e.g. when new data i
 The relevant code can be found in `2_train.py`.
 Start the training by running:
 ```shell
-pipenv run python 2_train.py
+poetry run python 2_train.py
 ```
 You might want to specify some of the selectable parameters described above.
 Trained models are written to the database in JSON format (schema fairq\_(prod\_)output).
@@ -72,7 +72,7 @@ Predictions can be made for different settings:
 
 These scripts can be executed by running:
 ```shell
-pipenv run python <filename> <selectable_parameters>
+poetry run python <filename> <selectable_parameters>
 ```
 Predictions are written to the database in JSON format (schema fairq\_(prod\_)output).
 
@@ -83,12 +83,12 @@ The model (parameter) evaluation is performed by cross validation.
 To estimate how good the model generalizes in the spatial domain, a 'leave-one-station-out' approach is used. The model is trained on the data of all but one stations. The evaluation is performed on the left out station. This procedure is repeated for every station and the results are averaged.
 This evaluation can be executed by running:
 ```shell
-pipenv run python 4_cv_loso.py
+poetry run python 4_cv_loso.py
 ```
 
 To estimate how good the models predictions into the future are, a temporally resolved cross validation is performed. It can be executed by:
 ```shell
-pipenv run python 5_cv_time_t_plus_k.py
+poetry run python 5_cv_time_t_plus_k.py
 ```
 The results are written to the database in JSON format (schema fairq\_(prod\_)output) to be available for further model evaluation using dashboards.
 
@@ -120,5 +120,5 @@ You can run style checking commands in the console, which we usually do automati
 ## Jupyter Notebooks (unpublished)
 The Notebook folder contains several jupyter notebooks for visualization, including variable exploration, shapley plots to estimate feature importance and simulations of kfz-adjustments.
 For jupyter notebooks to work, first install everything from the Pipfile and then run
-`pipenv run jupyter contrib nbextension install --user`
+`poetry run jupyter contrib nbextension install --user`
 

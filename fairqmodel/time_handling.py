@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Union
 
 import numpy as np
@@ -65,7 +65,7 @@ def to_unix_datetime(date: datetime) -> int:
 def get_current_local_time() -> datetime:
     """Returns the current date in Berlin time"""
 
-    utc_now = datetime.utcnow().replace(tzinfo=pytz.utc)
+    utc_now = datetime.now(UTC).replace(tzinfo=pytz.utc)
     berlin_now = utc_now.astimezone(pytz.timezone("Europe/Berlin")).replace(microsecond=0)
 
     return berlin_now

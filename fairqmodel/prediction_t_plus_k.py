@@ -96,8 +96,8 @@ def prediction_t_plus_k(
             # Reorder columns
             df_predictions = df_predictions[["model_id", "date_time_forecast", "date_time", "station_id", "value"]]
             # Convert date_time to unix
-            df_predictions.loc[:, "date_time"] = to_unix(df_predictions["date_time"])
-            df_predictions.loc[:, "date_time_forecast"] = to_unix(df_predictions["date_time_forecast"])
+            df_predictions["date_time"] = to_unix(df_predictions["date_time"])
+            df_predictions["date_time_forecast"] = to_unix(df_predictions["date_time_forecast"])
 
             send_data_clickhouse(
                 df=df_predictions,

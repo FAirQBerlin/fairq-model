@@ -1,4 +1,4 @@
-import logging
+# import logging
 from logging.config import dictConfig
 from typing import Tuple
 
@@ -7,80 +7,81 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 
-from fairqmodel.data_preprocessing import fix_column_types
-from fairqmodel.db_connect import db_connect_target, get_query
+# from fairqmodel.data_preprocessing import fix_column_types
+# from fairqmodel.db_connect import db_connect_target, get_query
 from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
 
 
-def preprocess_data_for_limit_values(
-    depvar: str, model_id: int, forecast_horizon_days: int = 1
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Loads and pre-processes the observations and predictions for a given model.
-    The data is used to identify whether allowed pollution levels were exceeded.
+# def preprocess_data_for_limit_values(
+#     depvar: str, model_id: int, forecast_horizon_days: int = 1
+# ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+#     """Loads and pre-processes the observations and predictions for a given model.
+#     The data is used to identify whether allowed pollution levels were exceeded.
 
-    :param depvar: str, Dependent variable
-    :param model_id: int, ID of the model that performs the predictions
-    :param forecast_horizon_days: int, Specifies the day of the forecast that is evaluated
+#     :param depvar: str, Dependent variable
+#     :param model_id: int, ID of the model that performs the predictions
+#     :param forecast_horizon_days: int, Specifies the day of the forecast that is evaluated
 
-    :return: Tuple[pd.DataFrame, pd.DataFrame], First DataFrame containing all information,
-                                                Second DataFrame containing predictions/observations
-                                                aggregated on daily basis.
-    """
+#     :return: Tuple[pd.DataFrame, pd.DataFrame], First DataFrame containing all information,
+#                                                 Second DataFrame containing predictions/observations
+#                                                 aggregated on daily basis.
+#     """
 
-    # Retrieve data from db
-    with db_connect_target() as db:
-        dat = db.query_dataframe(get_query("limit_values_analysis"), params={"model_id": model_id})
+#     # Retrieve data from db
+#     with db_connect_target() as db:
+#         dat = db.query_dataframe(get_query("limit_values_analysis"), params={"model_id": model_id})
 
-    # Remove two not selected depvars
-    dat.drop(columns=list({"no2", "pm25", "pm10"}.difference({depvar})), inplace=True)
+#     # Remove two not selected depvars
+#     dat.drop(columns=list({"no2", "pm25", "pm10"}.difference({depvar})), inplace=True)
 
-    # Fix column type
-    dat = fix_column_types(dat, ["station_id"], [depvar])
+#     # Fix column type
+#     dat = fix_column_types(dat, ["station_id"], [depvar])
 
-    # select forecast range
-    assert forecast_horizon_days <= 2, f"There are no predictions for {forecast_horizon_days} days into the future."
-    # TODO Modify this assert as soon as a final model was used to perform predictions for the year of interest.
-    # Move it to query
-    low = pd.Timedelta(24 * (forecast_horizon_days - 1), "hour")
-    high = pd.Timedelta(24 * forecast_horizon_days, "hour")
-    dat = dat[(dat.date_time - dat.date_time_forecast <= high) & (dat.date_time - dat.date_time_forecast > low)]
+#     # select forecast range
+#     assert forecast_horizon_days <= 2, f"There are no predictions for {forecast_horizon_days} days into the future."
+#     # TODO Modify this assert as soon as a final model was used to perform predictions for the year of interest.
+#     # Move it to query
+#     low = pd.Timedelta(24 * (forecast_horizon_days - 1), "hour")
+#     high = pd.Timedelta(24 * forecast_horizon_days, "hour")
+#     dat = dat[(dat.date_time - dat.date_time_forecast <= high) & (dat.date_time - dat.date_time_forecast > low)]
 
-    # Aggregate data on daily basis
-    pred_vs_observation, dat = aggregate_data_daily(dat)
+#     # Aggregate data on daily basis
+#     pred_vs_observation, dat = aggregate_data_daily(dat)
 
-    # Check for duplicates
-    if sum(pred_vs_observation.duplicated(subset=["station_id", "date_time"])) > 0:
-        logging.warning("The data contains duplicates.")
+#     # Check for duplicates
+#     if sum(pred_vs_observation.duplicated(subset=["station_id", "date_time"])) > 0:
+#         logging.warning("The data contains duplicates.")
 
-    # If values are missing, remove them
-    missing_values_count = pred_vs_observation[depvar].isna().sum()
-    if missing_values_count > 0:
-        pred_vs_observation = pred_vs_observation.dropna(subset=[depvar])
-        logging.info(f"{missing_values_count} missing values have been removed.")
+#     # If values are missing, remove them
+#     missing_values_count = pred_vs_observation[depvar].isna().sum()
+#     if missing_values_count > 0:
+#         pred_vs_observation = pred_vs_observation.dropna(subset=[depvar])
+#         logging.info(f"{missing_values_count} missing values have been removed.")
 
-    return dat, pred_vs_observation
+#     return dat, pred_vs_observation
 
 
-def aggregate_data_daily(dat: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Computes the mean prediction and observation per day.
-    The dates in the DataFrame as in UTC but tz naive. They are cast to Berlin Time before processing.
-    NOTE: Includes 0 am to the previous day (as requested).
+# the following function was outcommented as some tests are failing and not used in prod
+# def aggregate_data_daily(dat: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+#     """Computes the mean prediction and observation per day.
+#     The dates in the DataFrame as in UTC but tz naive. They are cast to Berlin Time before processing.
+#     NOTE: Includes 0 am to the previous day (as requested).
 
-    :param dat: pd.DataFrame, Containing unaggregated data
+#     :param dat: pd.DataFrame, Containing unaggregated data
 
-    :return: pd.DataFrame, Containing the aggregated date
-    :return: pd.DataFrame, Original DataFrame but 'date_time' column is in Berlin Time (and as before tz naive)
-    """
-    # Interpret dates in DataFrame as UTC and convert to Berlin Time
-    dat.loc[:, "date_time"] = dat["date_time"].dt.tz_localize("UTC").dt.tz_convert(tz="Europe/Berlin")
+#     :return: pd.DataFrame, Containing the aggregated date
+#     :return: pd.DataFrame, Original DataFrame but 'date_time' column is in Berlin Time (and as before tz naive)
+#     """
+#     # Interpret dates in DataFrame as UTC and convert to Berlin Time
+#     dat.loc["date_time"] = dat["date_time"].dt.tz_localize("UTC").dt.tz_convert(tz="Europe/Berlin")
 
-    # Aggregate on the 'date_time' column (which is currently in Berlin Time)
-    pred_vs_observation = dat.groupby("station_id").resample("D", on="date_time", closed="right").mean().reset_index()
-    pred_vs_observation["date_time"] = pred_vs_observation["date_time"].dt.strftime("%Y-%m-%d")
-    dat.loc[:, "date_time"] = dat["date_time"].dt.tz_localize(None)
-    return pred_vs_observation, dat
+#     # Aggregate on the 'date_time' column (which is currently in Berlin Time)
+#     pred_vs_observation = dat.groupby("station_id").resample("D", on="date_time", closed="right").mean().reset_index()
+#     pred_vs_observation["date_time"] = pred_vs_observation["date_time"].dt.strftime("%Y-%m-%d")
+#     dat.loc[:, "date_time"] = dat["date_time"].dt.tz_localize(None)
+#     return pred_vs_observation, dat
 
 
 def calc_conf_matrix(

@@ -49,7 +49,7 @@ def drop_stations_without_this_depvar(dat: pd.DataFrame, depvar: str) -> pd.Data
     :param depvar: str, Dependent variable, can be "no2", "pm10", or "pm25"
     :return: pd.DataFrame, Comprised of the same columns and maybe fewer rows
     """
-    any_depvar_value = dat.groupby("station_id").apply(lambda x: any(x[depvar].notnull()))
+    any_depvar_value = dat.groupby("station_id").apply(lambda x: any(x[depvar].notnull()), include_groups=False)
     stations_with_this_depvar = any_depvar_value.index[any_depvar_value]
     dat = dat.loc[dat.station_id.isin(stations_with_this_depvar)]
     return dat

@@ -43,13 +43,18 @@ def time_lags(
 
     if len(lags_all) > 0:
         # Create the columns for lags of both types (i.e. lags_actual and lags_avg)
-        dat = dat.groupby("station_id").apply(lambda x: get_station_lags(x, depvar, lags_all))
+        dat = dat.groupby("station_id").apply(lambda x: get_station_lags(x, depvar, lags_all), include_groups=False)
+        dat["station_id"] = dat.index.get_level_values("station_id").to_list()
+        cols = dat.columns.tolist()
+        # Reorder columns to have the station_id at the beginning
+        dat = dat[cols[-1:] + cols[:-1]]
+        dat = dat.reset_index("station_id", drop=True)
 
         # If there are values in lags_avg, construct the average feature
         if len(lags_avg) > 0:
             cols = [f"{depvar}_lag{x}" for x in lags_avg]
             col_name = f"lag_avg_{sorted(lags_avg)}".replace("[", "(").replace("]", ")")
-            dat.loc[:, col_name] = dat.loc[:, cols].mean(axis=1)
+            dat.loc[:, col_name] = dat.loc[:, cols].astype(float).mean(axis=1)
 
             if f"{depvar}_train" in dat.columns:
                 cols = [f"{depvar}_lag{x}_train" for x in lags_avg]
@@ -80,7 +85,7 @@ def get_station_lags(
     requires_train_lags = f"{depvar}_train" in dat.columns
 
     for lag in lags:
-        dat.loc[:, f"{depvar}_lag{lag}"] = dat.loc[:, depvar].shift(lag)
+        dat.loc[:, f"{depvar}_lag{lag}"] = dat.loc[:, depvar].astype(float).shift(lag)
 
         # If a separated depvar column for the training exists, lags are built accordingly
         if requires_train_lags:

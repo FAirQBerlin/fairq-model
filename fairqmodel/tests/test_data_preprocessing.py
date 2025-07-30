@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import pandas as pd
 from pandas.testing import assert_frame_equal
 from pytest import raises
@@ -31,7 +29,7 @@ def test_fix_column_type_output():
     Checks the returend DataFrame for data and correct dtype.
     """
     # arrange
-    date_now = datetime.now()
+    date_now = "2018-10-26 13:00:00"
     dat = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4], "date_time": date_now})
     expected = pd.DataFrame(
         data={"col1": pd.Series([1, 2]).astype("category"), "col2": [3.0, 4.0], "date_time": pd.to_datetime(date_now)}

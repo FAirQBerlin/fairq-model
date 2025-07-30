@@ -19,7 +19,7 @@ logging.info(f"Starting with msg = {msg}")
 
 if not msg:
     # for testing you can uncomment the following line:
-    # msg = {"batch_id": 1, "depvar": "no2"}
+    # msg = '{"batch_id": 1, "depvar": "no2"}'
     raise ValueError('msg argument is required. Example: msg=\'{"batch_id": 1, "depvar": "no2"}\'')
 
 

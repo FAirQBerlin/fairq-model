@@ -1,3 +1,95 @@
+[tool.poetry]
+name = "fairqmodel"
+version = "2025.7.0"
+description = "This repo contains the Python code of the entire life cycle of the air quality model"
+authors = ["Henrik Tillkorn <henrik.tillkorn@inwt-statistics.de>, Milan Flach <milan.flach@inwt-statistics.de>"]
+readme = "README.md"
+packages = [{ include = "fairqmodel" }]
+
+
+[tool.bumpver]
+current_version = "2025.7.0"
+version_pattern = "YYYY.MM.PATCH"
+commit_message = "bump version to {old_version} -> {new_version}"
+tag_message = "v{new_version}"
+commit = true
+tag = true
+push = false
+
+[tool.poetry.dependencies]
+python = ">=3.11,<4.0"
+pandas = "^2.3.0"
+xgboost = "^3.0.2"
+scikit-learn = "^1.7.0"
+tqdm = "^4.67.1"
+clickhouse-driver = "^0.2.9"
+python-dateutil = "^2.9.0.post0"
+pytz-deprecation-shim = "^0.1.0.post0"
+retrying = "^1.4.0"
+tzdata = "^2025.2"
+tzlocal = "^5.3.1"
+sqlalchemy = "^2.0.41"
+numpy = "^2.3.1"
+python-dotenv = "^1.1.1"
+
+[tool.poetry.group.dev.dependencies]
+bumpver = "*"
+ruff = "*"
+black = "*"
+mypy = "*"
+pytest = "^8.4.1"
+cmd2 = "^2.7.0"
+flake8 = "^7.3.0"
+gunicorn = "^23.0.0"
+iniconfig = "^2.1.0"
+ipykernel = "^6.29.5"
+isort = "^6.0.1"
+jupyter-contrib-nbextensions = "^0.7.0"
+matplotlib = "^3.10.3"
+optuna = "^4.4.0"
+optuna-dashboard = "^0.19.0"
+pygments = "^2.19.2"
+pyjwt = "^2.10.1"
+pyrsistent = "^0.20.0"
+pytest-cov = "^6.2.1"
+plotly = "^6.2.0"
+jupyter-cache = "^1.0.1"
+
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    '^version = "{version}"',
+    '^current_version = "{version}"',
+]
+"fairqmodel/__init__.py" = [
+    '^__version__ = "{version}"',
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "local: marks tests that should only run during local development",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["ANN", "COM812", "D", "ISC001"]
+per-file-ignores = { "fairq_data_traffic_api/tests/*" = ["S101"] }
+
+[tool.mypy]
+ignore_missing_imports = false
+exclude = "fairqmodel/notebook_helpers/"
+
+[[tool.mypy.overrides]]
+module = [
+    "clickhouse_driver",
+    "clickhouse_driver.*"
+]
+ignore_missing_imports = true
+
 [tool.black]
 line-length = 120
 target-version = ['py39']

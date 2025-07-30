@@ -139,7 +139,7 @@ for station_id in all_station_ids:
         df_predictions["model_id"] = model_id
 
         # Convert date column to unix format
-        df_predictions.loc[:, "date_time"] = to_unix(df_predictions["date_time"])
+        df_predictions["date_time"] = to_unix(df_predictions["date_time"])
 
         # Reorder columns
         df_predictions = df_predictions[["model_id", "date_time", "station_id", "value"]]

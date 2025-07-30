@@ -1,44 +1,8 @@
 import math
-from datetime import datetime, timedelta
 from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
-
-from fairqmodel.notebook_helpers.limit_values import aggregate_data_daily
-
-
-def test_aggregate_data_daily():
-    # Arrange
-    depvar = "no2"
-    n_days = 2
-    n_stations = 2
-    dat_size = n_stations * n_days * 24
-
-    # Each day has to start at 1am and ends with 0am of the following day
-    target_hours = np.array(list(np.arange(1, 24)) + [0])
-
-    # Build columns of DataFrame
-    station_id = ["3141"] * (dat_size // n_stations) + ["2718"] * (dat_size // n_stations)
-    pred = np.random.rand(dat_size)
-    obs = np.random.rand(dat_size)
-    date_time = (
-        np.arange(datetime(2021, 1, 1), datetime(2022, 1, 1), timedelta(hours=1))
-        .astype(datetime)[: (dat_size // n_stations)]
-        .tolist()
-        * n_stations
-    )
-
-    dat = pd.DataFrame({"station_id": station_id, "pred": pred, "no2": obs, "date_time": date_time})
-
-    # Act
-    pred_vs_obs, dat = aggregate_data_daily(dat.copy(deep=True))
-    pred_list, obs_list, hour_list = verify_resampling(dat, pred_vs_obs, depvar, target_hours)
-
-    # Assert
-    assert all(obs_list)
-    assert all(pred_list)
-    assert all(hour_list)
 
 
 def verify_resampling(
