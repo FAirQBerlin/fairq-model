@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fairqmodel"
-version = "2025.7.0"
+version = "2025.08.0"
 description = "This repo contains the Python code of the entire life cycle of the air quality model"
 authors = ["Henrik Tillkorn <henrik.tillkorn@inwt-statistics.de>, Milan Flach <milan.flach@inwt-statistics.de>"]
 readme = "README.md"
@@ -8,13 +8,22 @@ packages = [{ include = "fairqmodel" }]
 
 
 [tool.bumpver]
-current_version = "2025.7.0"
-version_pattern = "YYYY.MM.PATCH"
+current_version = "2025.08.0"
+version_pattern = "YYYY.0M.PATCH"
 commit_message = "bump version to {old_version} -> {new_version}"
 tag_message = "v{new_version}"
 commit = true
 tag = true
 push = false
+
+[bumpver.file_patterns]
+"poetry.toml" = [
+    'version = "{version}"',
+    'current_version = "{version}"'
+]
+"fairqmodel/__init__.py" = [
+    '__version__ = "{version}"',
+]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
