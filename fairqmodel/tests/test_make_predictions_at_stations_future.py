@@ -27,8 +27,6 @@ from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
 
-import pytest
-@pytest.mark.local
 def test_make_predictions_at_stations_future():
     # arrange
 

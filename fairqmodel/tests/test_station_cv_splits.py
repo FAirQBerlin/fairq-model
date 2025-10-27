@@ -4,7 +4,7 @@ from pytest import raises
 from fairqmodel.station_cv_splits import get_station_cv_folds
 
 
-def get_station_cv_folds_input():
+def test_get_station_cv_folds_input():
     """
     Test that function fails if DataFrame has no column station_id.
     """
@@ -16,7 +16,7 @@ def get_station_cv_folds_input():
         _ = get_station_cv_folds(dummy_dat)
 
 
-def get_station_cv_folds_output():
+def test_get_station_cv_folds_output():
     """
     Checks the returned format, size and content.
     """

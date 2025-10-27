@@ -8,8 +8,6 @@ from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
 
-import pytest
-@pytest.mark.local
 def test_process_grid_pred_batches():
     """Test the process_batch function for grid prediction batches."""
     # arrange

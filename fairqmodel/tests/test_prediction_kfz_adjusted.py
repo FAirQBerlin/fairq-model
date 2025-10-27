@@ -1,7 +1,11 @@
 import pandas as pd
 from pytest import fixture
 
-from fairqmodel.prediction_kfz_adjusted import adjust_kfz_per_hour_grid, mark_hours_to_modify, pre_fill_lags
+from fairqmodel.prediction_kfz_adjusted import (
+    adjust_kfz_per_hour_grid,
+    mark_hours_to_modify,
+    pre_fill_lags,
+)
 from fairqmodel.tests.helpers import arrange_for_lag_pred_tests
 
 
@@ -77,6 +81,17 @@ def test_pre_fill_lags():
     # Act
     dat_res = pre_fill_lags(dat.copy(deep=True), depvar, model_settings, date_min)
 
+    changed_columns = [
+        "pm25_lag1",
+        "pm25_lag2",
+        "pm25_lag3",
+        "pm25_lag4",
+        "pm25_lag5",
+        "pm25_lag24",
+        "pm25_lag48",
+        "lag_avg_(1, 2, 3, 4, 5)",
+    ]
+
     dat_constant = dat.drop(columns=changed_columns)
     dat_res_constant = dat_res.drop(columns=changed_columns)
     dat_res_changed = dat_res.loc[:, changed_columns].copy(deep=True)
@@ -97,7 +112,10 @@ def test_pre_fill_lags():
 
     # Check if the avg_lag was built correctly, again ignoring the leading NaN
     assert all(
-        dat_res_changed.loc[:, ["pm25_lag1", "pm25_lag2"]].sum(axis=1)[1:] / 2 == dat_res_changed["lag_avg_(1, 2)"][1:]
+        dat_res_changed.loc[
+            :, ["pm25_lag1", "pm25_lag2", "pm25_lag3", "pm25_lag4", "pm25_lag5"]
+        ].mean(axis=1)[1:]
+        == dat_res_changed["lag_avg_(1, 2, 3, 4, 5)"][1:]
     ), "Inconsistency between lags and lag_avg"
 
     # Check that lags directly after date_min are created from real observations
@@ -111,17 +129,18 @@ def test_pre_fill_lags():
         ), "Available real lags seem to overwritten"
 
     # Check remaining lags are NOT created from the observations
-    for lag in [1, 2, 3]:
+    for lag in [1, 2, 3, 4, 5]:
         date_min_lag = date_min + pd.Timedelta(lag, "hours")
         idx = dat_res_constant["date_time"] > date_min_lag
         assert not any(
-            dat_res_constant.loc[idx, depvar] == dat_res_changed.loc[idx, f"pm25_lag{lag}"].shift(periods=-lag)
+            dat_res_constant.loc[idx, depvar]
+            == dat_res_changed.loc[idx, f"pm25_lag{lag}"].shift(periods=-lag)
         ), "Real lags are used at a point, where they shouldn't accessible"
 
     # Check after 'date_min' there are no None values in the lag vars
-    assert all(
-        dat_res_changed.loc[dat_res_constant["date_time"] > date_min, :].notna()
-    ), "Lag values have not been filled completely"
+    assert all(dat_res_changed.loc[dat_res_constant["date_time"] > date_min, :].notna()), (
+        "Lag values have not been filled completely"
+    )
 
 
 # __file__ = "fairqmodel/tests/test_prediction_kfz_adjusted.py"

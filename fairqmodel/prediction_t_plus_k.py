@@ -82,7 +82,9 @@ def prediction_t_plus_k(
         )
         if verbose:
             logging.info(f"Currently predicting fold {fold['ts_fold_id']}/{len(time_folds)}")
-            logging.info(f"date_time_forecast: {fold['ts_fold_max_train_date'].strftime('%Y-%m-%d %H:%M:%S')}")
+            logging.info(
+                f"date_time_forecast: {fold['ts_fold_max_train_date'].strftime('%Y-%m-%d %H:%M:%S')}"
+            )
 
         all_results, _ = make_lag_adjusted_prediction(
             fold, models, feature_cols, depvar, lags_actual, lags_avg, calc_metrics
@@ -94,7 +96,9 @@ def prediction_t_plus_k(
             df_predictions["model_id"] = model_id
 
             # Reorder columns
-            df_predictions = df_predictions[["model_id", "date_time_forecast", "date_time", "station_id", "value"]]
+            df_predictions = df_predictions[
+                ["model_id", "date_time_forecast", "date_time", "station_id", "value"]
+            ]
             # Convert date_time to unix
             df_predictions["date_time"] = to_unix(df_predictions["date_time"])
             df_predictions["date_time_forecast"] = to_unix(df_predictions["date_time_forecast"])
@@ -102,7 +106,7 @@ def prediction_t_plus_k(
             send_data_clickhouse(
                 df=df_predictions,
                 table_name=table_name,
-                mode="replace",
+                mode="insert",
             )
 
 
@@ -135,23 +139,33 @@ def get_model_settings(available_models: pd.DataFrame, MODEL_ID: int) -> dict:
     categorical_feature_cols = [
         feature for feature, feature_type in zip(feature_cols, feature_types) if feature_type == "c"
     ]
-    metric_feature_cols = [feature for feature, feature_type in zip(feature_cols, feature_types) if feature_type != "c"]
+    metric_feature_cols = [
+        feature for feature, feature_type in zip(feature_cols, feature_types) if feature_type != "c"
+    ]
 
-    description_model_1 = loads(available_models.loc[available_models.model_id == MODEL_ID, "description"].values[0])
+    description_model_1 = loads(
+        available_models.loc[available_models.model_id == MODEL_ID, "description"].values[0]
+    )
 
     lags = eval(description_model_1["lags"])
-    lags_avg = eval(description_model_1["lags_avg"]) if "lags_avg" in description_model_1.keys() else []
+    lags_avg = (
+        eval(description_model_1["lags_avg"]) if "lags_avg" in description_model_1.keys() else []
+    )
 
     if models.use_two_stages:
         description_model_2 = loads(
-            available_models.loc[available_models.model_id == MODEL_ID, "description_residuals"].values[0]
+            available_models.loc[
+                available_models.model_id == MODEL_ID, "description_residuals"
+            ].values[0]
         )
         lags.extend(eval(description_model_2["lags"]))
         if "lags_avg" in description_model_2.keys():
             lags_avg.extend(eval(description_model_2["lags_avg"]))
 
     max_training_date_model_1 = description_model_1["training_period"][1]
-    max_training_date_model_2 = description_model_2["training_period"][1] if models.use_two_stages else None
+    max_training_date_model_2 = (
+        description_model_2["training_period"][1] if models.use_two_stages else None
+    )
 
     model_settings = {
         "models": models,

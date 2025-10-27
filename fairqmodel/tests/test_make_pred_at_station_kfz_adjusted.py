@@ -16,8 +16,6 @@ dictConfig(get_logger_config())
 
 logging.info("Using fairqmodel in version: {}".format(fqm.__version__))
 
-import pytest
-@pytest.mark.local
 def test_make_pred_at_station_kfz_adjusted():
     """Test the prediction_kfz_adjusted script for kfz-adjusted predictions at stations."""
 

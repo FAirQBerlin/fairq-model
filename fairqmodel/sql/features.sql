@@ -15,6 +15,7 @@ With latest_traffic_preds as (
       from
         traffic_models_final
       where depvar = 'q_kfz'
+      and preds_finished
 	)
 	and (x, y) in (select toUInt32(x), toUInt32(y) from coords)
   and date_time >= toDateTime(%(date_time_min)s, 'UTC') - interval 2 day -- due due 48 hours lag
@@ -53,7 +54,9 @@ latest_velocity_preds AS (
   FROM
     traffic_model_predictions_{traffic_table_suffix} final
   WHERE model_id = (
-    select model_id from traffic_models_final where depvar = 'v_kfz'
+    select model_id from traffic_models_final 
+    where depvar = 'v_kfz' 
+    and preds_finished
   )
   and date_time >= toDateTime(%(date_time_min)s, 'UTC') - interval 2 day -- due to 48 hours lag
   and date_time <= toDateTime(%(date_time_max)s, 'UTC')

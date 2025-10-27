@@ -1,5 +1,3 @@
-import os
-import pickle
 from datetime import datetime, timedelta
 from typing import List, Tuple
 
@@ -7,6 +5,8 @@ import numpy as np
 import pandas as pd
 
 from fairqmodel.data_preprocessing import fix_column_types
+from fairqmodel.db_connect import db_connect_target, get_query
+from fairqmodel.prediction_t_plus_k import get_model_settings
 from fairqmodel.time_features import time_features
 
 
@@ -22,12 +22,11 @@ def arrange_for_lag_pred_tests() -> Tuple[pd.DataFrame, dict, pd.Timestamp, List
     :return: Tuple[pd.DataFrame, dict, pd.Timestamp, List[str]]
     """
     # Load a pre-trained dummy model and retrieve its parameters
-    script_dir = os.path.dirname(__file__)
-    rel_path = "models_and_data/test_model_settings.pickle"
-    abs_file_path = os.path.join(script_dir, rel_path)
+    query_params = {"model_type": "full_data_temporal", "depvar": "pm25"}
+    with db_connect_target() as db:
+        available_models = db.query_dataframe(get_query("available_models"), params=query_params)
 
-    with open(abs_file_path, "rb") as handle:
-        model_settings = pickle.load(handle)
+    model_settings = get_model_settings(available_models, 1350)
 
     depvar = model_settings["depvar"]
     features = list(set(model_settings["feature_cols"]))
@@ -49,15 +48,17 @@ def arrange_for_lag_pred_tests() -> Tuple[pd.DataFrame, dict, pd.Timestamp, List
     dat = pd.DataFrame(data, columns=features)
 
     # Fill the devpar column with available 'observations'
-    dat.loc[:, depvar] = np.arange(0, observed_time_points).tolist() + [None] * (time_points - observed_time_points)
+    dat.loc[:, depvar] = np.arange(0, observed_time_points).tolist() + [None] * (
+        time_points - observed_time_points
+    )
 
     # Set an arbitrary station_id to enable the lag construction
     dat.loc[:, "station_id"] = "314"
 
     # Fill the 'date_time' column with real but arbitrary dates
-    dat.loc[:, "date_time"] = np.arange(datetime(2021, 1, 1), datetime(2022, 1, 1), timedelta(hours=1)).astype(
-        datetime
-    )[:time_points]
+    dat.loc[:, "date_time"] = np.arange(
+        datetime(2021, 1, 1), datetime(2022, 1, 1), timedelta(hours=1)
+    ).astype(datetime)[:time_points]
 
     # Select the date that is used as 'min_date' for the pre_fill function
     date_min = pd.Timestamp("2021-01-01 03:00:00")

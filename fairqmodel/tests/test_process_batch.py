@@ -1,11 +1,7 @@
 import os
 
-import pytest
-
 from fairqmodel.process_batch import process_batch
 
-import pytest
-@pytest.mark.local
 def test_process_batch_grid():
     # if "INWT-L" not in os.uname()[1]:  # currently only local testing
     #     pytest.skip("no yet supported on jenkins")
@@ -20,8 +16,6 @@ def test_process_batch_grid():
     # assert
     assert res == exp
 
-import pytest
-@pytest.mark.local
 def test_process_batch_grid_sim():
     # if "INWT-L" not in os.uname()[1]:  # currently only local testing
     #     pytest.skip("no yet supported on jenkins")

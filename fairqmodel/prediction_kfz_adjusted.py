@@ -5,7 +5,11 @@ import numpy as np
 import pandas as pd
 import pytz
 
-from fairqmodel.data_preprocessing import cap_outliers, drop_stations_without_this_depvar, fix_column_types
+from fairqmodel.data_preprocessing import (
+    cap_outliers,
+    drop_stations_without_this_depvar,
+    fix_column_types,
+)
 from fairqmodel.db_connect import db_connect_source, get_query, send_data_clickhouse
 from fairqmodel.model_parameters import get_pollution_limits, get_tweak_values
 from fairqmodel.prediction_lag_adjusted import make_lag_adjusted_prediction
@@ -63,7 +67,9 @@ def prediction_kfz_adjusted(
 
     # Select and access the data
     date_min_absolute, date_max_absolute = prepare_dates_absolute(date_min, forecast_days)
-    dat_all_days = select_data(date_min_absolute, date_max_absolute, model_settings, depvar, station_id)
+    dat_all_days = select_data(
+        date_min_absolute, date_max_absolute, model_settings, depvar, station_id
+    )
 
     all_results: List[pd.DataFrame] = []
 
@@ -78,7 +84,9 @@ def prediction_kfz_adjusted(
         if dat_current_day.shape[0] != 24:
             hours = dat_current_day.shape[0]
             day = date_min_current.date()
-            logging.warning(f"Prediction for the '{day}' was aborted, since only data for {hours} hours is available.")
+            logging.warning(
+                f"Prediction for the '{day}' was aborted, since only data for {hours} hours is available."
+            )
             return all_results, list()
 
         # DataFrame for results
@@ -102,8 +110,12 @@ def prediction_kfz_adjusted(
                 dat_adjusted=dat_current_day.copy(deep=True),
                 percentage=percentage,
                 hours_to_modify=hours_to_modify,
-                date_min_current=dat_current_day.date_time.min().tz_localize(tz="UTC").tz_convert(tz="Europe/Berlin"),
-                date_max_current=dat_current_day.date_time.max().tz_localize(tz="UTC").tz_convert(tz="Europe/Berlin"),
+                date_min_current=dat_current_day.date_time.min()
+                .tz_localize(tz="UTC")
+                .tz_convert(tz="Europe/Berlin"),
+                date_max_current=dat_current_day.date_time.max()
+                .tz_localize(tz="UTC")
+                .tz_convert(tz="Europe/Berlin"),
                 model_settings=model_settings,
             )
 
@@ -114,10 +126,14 @@ def prediction_kfz_adjusted(
 
         # Write predictions to DB
         if write_to_db:
-            assert kfz_percentage is None, "Results for manually selected percentage can not be written to DB."
+            assert kfz_percentage is None, (
+                "Results for manually selected percentage can not be written to DB."
+            )
 
             # Send the DataFrame to DB
-            send_data_clickhouse(df=dat_results, table_name="model_predictions_thresholds", mode="replace")
+            send_data_clickhouse(
+                df=dat_results, table_name="model_predictions_thresholds", mode="insert"
+            )
 
     return all_results, hours_to_modify.tolist()
 
@@ -152,7 +168,9 @@ def pre_fill_lags(
     dat.loc[future_idx, depvar] = None
 
     # Build time features and fix dtypes
-    dat = time_features(dat, depvar=depvar, lags_actual=model_settings["lags"], lags_avg=model_settings["lags_avg"])
+    dat = time_features(
+        dat, depvar=depvar, lags_actual=model_settings["lags"], lags_avg=model_settings["lags_avg"]
+    )
     dat = fix_column_types(
         dat,
         categorical_feature_cols=model_settings["categorical_feature_cols"],
@@ -171,12 +189,16 @@ def pre_fill_lags(
     dat.loc[future_idx, depvar] = forecast["pred"].values
 
     # Update the lags, now including all future time steps
-    dat = time_features(dat, depvar=depvar, lags_actual=model_settings["lags"], lags_avg=model_settings["lags_avg"])
+    dat = time_features(
+        dat, depvar=depvar, lags_actual=model_settings["lags"], lags_avg=model_settings["lags_avg"]
+    )
 
     # Change the temporarily overwritten observation values back to their original value
     dat.loc[:, depvar] = observations_backup
 
-    dat = fix_column_types(dat, model_settings["categorical_feature_cols"], model_settings["metric_feature_cols"])
+    dat = fix_column_types(
+        dat, model_settings["categorical_feature_cols"], model_settings["metric_feature_cols"]
+    )
 
     return dat
 
@@ -238,7 +260,9 @@ def make_forecast(
     )
 
     # Reorder columns
-    dat_prediction = dat_prediction[["date_time_forecast", "date_time", "station_id", model_settings["depvar"], "pred"]]
+    dat_prediction = dat_prediction[
+        ["date_time_forecast", "date_time", "station_id", model_settings["depvar"], "pred"]
+    ]
 
     return dat_prediction
 
@@ -326,7 +350,9 @@ def prepare_dates_absolute(date_min: str, forecast_days: int) -> Tuple[pd.Timest
     return date_min_absolute, date_max_absolute
 
 
-def prepare_dates_current(date_min_absolute: pd.Timestamp, day_number: int) -> Tuple[pd.Timestamp, pd.Timestamp]:
+def prepare_dates_current(
+    date_min_absolute: pd.Timestamp, day_number: int
+) -> Tuple[pd.Timestamp, pd.Timestamp]:
     """Selects the current date relatively to the given absolute date.
     'date_min_absolute' is in Berlin Time and consequently both returned dates are in Berlin Time too.
 
@@ -342,7 +368,11 @@ def prepare_dates_current(date_min_absolute: pd.Timestamp, day_number: int) -> T
 
 
 def select_data(
-    date_min_absolute: pd.Timestamp, date_max_absolute: pd.Timestamp, model_settings: dict, depvar: str, station_id: str
+    date_min_absolute: pd.Timestamp,
+    date_max_absolute: pd.Timestamp,
+    model_settings: dict,
+    depvar: str,
+    station_id: str,
 ) -> pd.DataFrame:
     """Selects the data for the specified range and builds the required lags.
 
@@ -373,7 +403,9 @@ def select_data(
     dat_all_days = pre_fill_lags(dat_all_days, depvar, model_settings, date_min_absolute)
 
     # Cut off dates prior to date min (that were required to build lags)
-    dat_all_days.query(f"date_time >= '{timestamp_to_np_datetime64(date_min_absolute)}'", inplace=True)
+    dat_all_days.query(
+        f"date_time >= '{timestamp_to_np_datetime64(date_min_absolute)}'", inplace=True
+    )
 
     return dat_all_days
 
@@ -403,7 +435,8 @@ def select_day(
     # Example: For the '2022-10-09' the time points ['2022-10-09 01:00:00', '2022-10-10 00:00:00']
     dat_current_day.query(
         "date_time > '{}' and date_time <= '{}'".format(
-            timestamp_to_np_datetime64(date_min_current), timestamp_to_np_datetime64(date_max_current)
+            timestamp_to_np_datetime64(date_min_current),
+            timestamp_to_np_datetime64(date_max_current),
         ),
         inplace=True,
     )
