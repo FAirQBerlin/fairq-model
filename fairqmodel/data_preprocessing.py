@@ -35,6 +35,12 @@ def fix_column_types(
     dat = dat.astype({x: "float" for x in all_metric_cols})
     dat.date_time = pd.to_datetime(dat.date_time)
 
+    # temporarily fix possible float categories,
+    # since xgboost now handles categorical features more strictly
+    for col in categorical_feature_cols:
+        if dat[col].dtype.name == "category" and dat[col].cat.categories.dtype.kind == "f":
+            dat[col] = dat[col].astype(str).astype("category")
+
     return dat
 
 

@@ -79,6 +79,8 @@ def test_pre_fill_lags():
     depvar = model_settings["depvar"]
 
     # Act
+    # ----> pre_fill_lags fails with xgboost 3.1.1
+    # ----> fixed type issues for categorical features in pre_fill_lags()
     dat_res = pre_fill_lags(dat.copy(deep=True), depvar, model_settings, date_min)
 
     changed_columns = [

@@ -40,6 +40,8 @@ def db_connect_source() -> Client:
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
         secure=True,
+        verify=True,
+        ca_certs="certificates/INWT-IPA-CA.pem",
         settings={"use_numpy": True, "max_threads": max_threads},
     )
 
@@ -57,6 +59,8 @@ def db_connect_target() -> Client:
         user=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
         secure=True,
+	    verify=True,
+	    ca_certs="certificates/INWT-IPA-CA.pem",
         settings={"use_numpy": True, "max_threads": max_threads},
     )
 

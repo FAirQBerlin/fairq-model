@@ -55,7 +55,7 @@
     "githubIssues.issueBranchTitle": "feature/${issueNumber}_${sanitizedIssueTitle}",
     "errorLens.messageEnabled": false,
     "cSpell.enabled": true,
-    "python.testing.pytestArgs": [],
+    "python.testing.pytestArgs": ["fairqmodel/tests"],
     "python.testing.unittestEnabled": false,
     "python-envs.defaultEnvManager": "ms-python.python:pyenv",
     "python-envs.pythonProjects": []
