@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fairqmodel"
-version = "2025.10.2"
+version = "2026.01.0"
 description = "This repo contains the Python code of the entire life cycle of the air quality model"
 authors = ["Henrik Tillkorn <henrik.tillkorn@inwt-statistics.de>, Milan Flach <milan.flach@inwt-statistics.de>"]
 readme = "README.md"
@@ -8,7 +8,7 @@ packages = [{ include = "fairqmodel" }]
 
 
 [tool.bumpver]
-current_version = "2025.10.2"
+current_version = "2026.01.0"
 version_pattern = "YYYY.0M.PATCH"
 commit_message = "bump version to {old_version} -> {new_version}"
 tag_message = "v{new_version}"
@@ -28,17 +28,17 @@ push = false
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
 pandas = "^2.3.3"
-xgboost = "^3.1.2"
+xgboost = "^3.1.3"
 scikit-learn = "^1.7.2"
 tqdm = "^4.67.1"
 clickhouse-driver = "^0.2.10"
 python-dateutil = "^2.9.0.post0"
 pytz-deprecation-shim = "^0.1.0.post0"
 retrying = "^1.4.2"
-tzdata = "^2025.2"
+tzdata = "^2025.3"
 tzlocal = "^5.3.1"
 sqlalchemy = "^2.0.44"
-numpy = "^2.3.5"
+numpy = "^2.4.1"
 python-dotenv = "^1.2.1"
 
 [tool.poetry.group.dev.dependencies]
@@ -47,7 +47,7 @@ ruff = "*"
 black = "*"
 mypy = "*"
 pytest = "^9.0.1"
-cmd2 = "^2.7.0"
+cmd2 = "^3.1.0"
 flake8 = "^7.3.0"
 gunicorn = "^23.0.0"
 iniconfig = "^2.3.0"
@@ -60,8 +60,8 @@ pygments = "^2.19.2"
 pyjwt = "^2.10.1"
 pyrsistent = "^0.20.0"
 pytest-cov = "^7.0.0"
-plotly = "^6.5.0"
-jupyterlab = "^4.5.0"
+plotly = "^6.5.1"
+jupyterlab = "^4.5.1"
 
 
 [tool.bumpver.file_patterns]
