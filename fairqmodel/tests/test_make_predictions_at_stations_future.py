@@ -6,6 +6,7 @@ The predictions can be written to the DB.
 
 NOTE: Script is used for daily jobs -> Don't change the model_id.
 """
+
 import logging
 from datetime import timezone
 from logging.config import dictConfig
@@ -15,17 +16,22 @@ import pandas as pd
 
 import fairqmodel as fqm
 from fairqmodel.command_line_args import get_command_args
-from fairqmodel.data_preprocessing import cap_outliers, drop_stations_without_this_depvar, fix_column_types
+from fairqmodel.data_preprocessing import (
+    cap_outliers,
+    drop_stations_without_this_depvar,
+    fix_column_types,
+)
 from fairqmodel.db_connect import db_connect_target, get_query
 from fairqmodel.get_max_date_time import get_max_date_time
 from fairqmodel.prediction_t_plus_k import get_model_settings, prediction_t_plus_k
 from fairqmodel.read_write_model_aux_functions import model_name_str
 from fairqmodel.retrieve_data import retrieve_data
 from fairqmodel.time_features import time_features
-from fairqmodel.time_handling import get_model_start_time, timestamp_to_np_datetime64
+from fairqmodel.time_handling import get_model_start_time
 from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
+
 
 def test_make_predictions_at_stations_future():
     # arrange
@@ -65,15 +71,23 @@ def test_make_predictions_at_stations_future():
     # If a larger number of hours for the forecast is selected than available,
     # select all available data.
     # NOTE: dat.date_time column is in UTC, but time zone naive -> Specify before calculation
-    forecast_hours = -(date_now - dat.date_time.max().tz_localize(timezone.utc)) / np.timedelta64(1, "h")
+    forecast_hours = -(date_now - dat.date_time.max().tz_convert(timezone.utc)) / np.timedelta64(
+        1, "h"
+    )
 
     # Retrieve selected model and settings
     with db_connect_target() as db:
-        model_id = db.query_dataframe(get_query("final_model_id"), params={"model_type": model_type, "depvar": depvar})
+        model_id = db.query_dataframe(
+            get_query("final_model_id"), params={"model_type": model_type, "depvar": depvar}
+        )
 
     model_id = model_id.model_id[0]
 
-    logging.info("Using model with id {}, predicting the upcoming {} hours".format(model_id, int(forecast_hours)))
+    logging.info(
+        "Using model with id {}, predicting the upcoming {} hours".format(
+            model_id, int(forecast_hours)
+        )
+    )
 
     query_params = {"model_type": model_name_str(model_type), "depvar": depvar}
 
@@ -108,11 +122,14 @@ def test_make_predictions_at_stations_future():
     for station in all_stations:
         logging.info(f"Current 'station_id': {station}")
         dat_station = dat.query(f"station_id == '{station}'").copy(deep=True)
-        dat_station = time_features(dat_station, depvar=depvar, lags_actual=lags_actual, lags_avg=lags_avg)
+        dat_station = time_features(
+            dat_station, depvar=depvar, lags_actual=lags_actual, lags_avg=lags_avg
+        )
         # Convert 'date_now' to UTC before it is used to query the DataFrame
-        time_without_tz = timestamp_to_np_datetime64(date_now)
-        dat_station.query(f"date_time >='{time_without_tz}'", inplace=True)
-        dat_station = fix_column_types(dat_station.copy(deep=True), categorical_feature_cols, metric_feature_cols)
+        dat_station.query(f"date_time >= '{date_now}'", inplace=True)
+        dat_station = fix_column_types(
+            dat_station.copy(deep=True), categorical_feature_cols, metric_feature_cols
+        )
         dat_station.reset_index(level=0, inplace=True, drop=True)
         prediction_t_plus_k(
             dat_station,

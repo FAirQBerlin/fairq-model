@@ -43,8 +43,11 @@ def time_lags(
 
     if len(lags_all) > 0:
         # Create the columns for lags of both types (i.e. lags_actual and lags_avg)
-        dat = dat.groupby("station_id").apply(lambda x: get_station_lags(x, depvar, lags_all), include_groups=False)
-        dat["station_id"] = dat.index.get_level_values("station_id").to_list()
+        dat = dat.groupby("station_id").apply(
+            lambda x: get_station_lags(x, depvar, lags_all), include_groups=False
+        )
+        dat = dat.copy()
+        dat["station_id"] = dat.index.get_level_values(0)
         cols = dat.columns.tolist()
         # Reorder columns to have the station_id at the beginning
         dat = dat[cols[-1:] + cols[:-1]]

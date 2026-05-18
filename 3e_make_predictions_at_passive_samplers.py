@@ -12,7 +12,7 @@ from fairqmodel.db_connect import db_connect_target, get_query, send_data_clickh
 from fairqmodel.prediction_t_plus_k import get_model_settings
 from fairqmodel.read_write_model_aux_functions import model_name_str
 from fairqmodel.retrieve_data import retrieve_data
-from fairqmodel.time_handling import get_model_start_time, to_unix
+from fairqmodel.time_handling import get_model_start_time
 
 # Selectable parameters
 DEV = False
@@ -24,7 +24,9 @@ date_max = "2022-12-31 23:00:00"
 # Retrieve model and settings
 model_type = "spatial"
 with db_connect_target() as db:
-    model_id = db.query_dataframe(get_query("final_model_id"), params={"model_type": model_type, "depvar": depvar})
+    model_id = db.query_dataframe(
+        get_query("final_model_id"), params={"model_type": model_type, "depvar": depvar}
+    )
 model_id = model_id.model_id[0]
 
 query_params = {"model_type": model_name_str(model_type), "depvar": depvar}
@@ -58,9 +60,7 @@ if write_db:
     df_for_db["value"] = predictions
     df_for_db = df_for_db.loc[:, ["model_id", "date_time_forecast", "date_time", "x", "y", "value"]]
 
-    # Convert date columns to unix format
-    df_for_db["date_time"] = to_unix(df_for_db["date_time"])
-    df_for_db["date_time_forecast"] = to_unix(df_for_db["date_time_forecast"])
-
     # Send results to the DB
-    send_data_clickhouse(df=df_for_db, table_name="model_predictions_passive_samplers", mode="insert")
+    send_data_clickhouse(
+        df=df_for_db, table_name="model_predictions_passive_samplers", mode="insert"
+    )

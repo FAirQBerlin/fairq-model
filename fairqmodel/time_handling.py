@@ -1,65 +1,7 @@
-from datetime import datetime, UTC
-from typing import Union
+from datetime import UTC, datetime
 
-import numpy as np
 import pandas as pd
 import pytz
-
-
-def to_unix(entry: Union[pd.Series, datetime]) -> Union[pd.Series, int]:
-    """Converts the provided entry into unix format.
-    The entry can either be a Series of dates or a datetime object.
-
-    :param entry: Union[pd.Series, datetime],
-                  pd.Series: A column of a DataFrame containing dates
-                  datetime: A single date in datetime format
-
-    :return: Union[pd.Series, int],
-                  pd.Series: Same series but in unix format
-                  int: Unix timestamp of the datetime
-    """
-    assert isinstance(
-        entry, (pd.Series, datetime)
-    ), "Provided entry has incorrect type and can't be converted to unix format"
-
-    if isinstance(entry, pd.Series):
-        result = to_unix_series(entry)
-    else:
-        result = to_unix_datetime(entry)
-
-    return result
-
-
-def to_unix_series(col: pd.Series) -> pd.Series:
-    """Converts a Series of dates to unix format
-
-    :param col:pd.Series, Column of a DataFrame containing dates
-
-    :return:pd.Series, Same column but in unix format
-    """
-    # If the series is tz naive, it is interpreted as utc
-    if col.dt.tz is None:
-        col = col.dt.tz_localize("utc")
-
-    col_unix = col.apply(to_unix_datetime)
-
-    return col_unix
-
-
-def to_unix_datetime(date: datetime) -> int:
-    """Converts a datetime object to unix format
-
-    :param date:datetime, Date to be converted
-
-    :return:int, Date in unix format
-    """
-    # If the date is tz naive, it is interpreted as utc
-    if date.tzinfo is None:
-        date = pytz.utc.localize(date)
-
-    date_unix = int(date.timestamp())
-
-    return date_unix
 
 
 def get_current_local_time() -> datetime:
@@ -97,19 +39,13 @@ def get_model_start_time(twice_daily: bool = True) -> pd.Timestamp:
     return pd.Timestamp(date_time_forecast)
 
 
-def timestamp_to_np_datetime64(date: pd.Timestamp) -> np.datetime64:
-    """Casts a Timestamp to np.datetime64 format. Before casting, the Timestamp is converted to UTC.
-    If it is already in UTC the conversion has no effect.
-    If the Timestamp has no tzinfo, it is assumed to be in UTC.
+def timestamp_to_tz_aware(date: pd.Timestamp) -> pd.Timestamp:
+    """Turns a timestamp into a timezone-aware timestamp in Europe/Berlin timezone.
 
-    :param date: pd.Timestamp, Date in an arbitrary time zone
+    :param date: pd.Timestamp, Date in an arbitrary time zone or tz naive
 
-    :return: np.datetime64, Date in UTC as np.datetime64 format
+    :return: pd.Timestamp, Date in Europe/Berlin timezone
     """
-
-    if date.tzinfo is not None:
-        date = date.tz_convert(tz="UTC").tz_localize(None)
-
-    date_as_np_64 = np.datetime64(date)
-
-    return date_as_np_64
+    if date.tzinfo is None:
+        return date.tz_localize("UTC").tz_convert("Europe/Berlin")
+    return date.tz_convert("Europe/Berlin")

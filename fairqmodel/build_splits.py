@@ -83,7 +83,7 @@ def prepare_folded_input(
 
 
 def convert_to_local_time(time_stamp):
-    return time_stamp.tz_localize(tz="UTC").tz_convert(
+    return time_stamp.tz_convert(
         tz="Europe/Berlin",
     )
 
@@ -109,7 +109,9 @@ def slice_data_frame(
     ]
 
 
-def set_prediction_hour(prediction_hour: int, max_date: datetime, prediction_window_size: int) -> datetime:
+def set_prediction_hour(
+    prediction_hour: int, max_date: datetime, prediction_window_size: int
+) -> datetime:
     """Sets 'max_date' s.t. the predictions are performed at the selected time.
 
     :param prediction_hour: int, Hour of the day, when the prediction should be performed, Berlin Time
@@ -118,15 +120,21 @@ def set_prediction_hour(prediction_hour: int, max_date: datetime, prediction_win
 
     :return:datetime, New 'max_date' with selected 'prediction_hour', in UTC but tz naive
     """
-    max_date_berlin = pytz.timezone("UTC").localize(max_date).astimezone(pytz.timezone("Europe/Berlin"))
+    max_date_berlin = (
+        pytz.timezone("UTC").localize(max_date).astimezone(pytz.timezone("Europe/Berlin"))
+    )
     first_pred_date = max_date_berlin - pd.Timedelta(f"{prediction_window_size} hours")
 
     if first_pred_date.hour > prediction_hour:
         # Floor down to correct hour
-        new_max_date_berlin = max_date_berlin - pd.Timedelta(first_pred_date.hour - prediction_hour, "hours")
+        new_max_date_berlin = max_date_berlin - pd.Timedelta(
+            first_pred_date.hour - prediction_hour, "hours"
+        )
     elif first_pred_date.hour < prediction_hour:
         # Increase to correct hour and decrease by one day
-        new_max_date_berlin = max_date_berlin - pd.Timedelta(24 + (first_pred_date.hour - prediction_hour), "hours")
+        new_max_date_berlin = max_date_berlin - pd.Timedelta(
+            24 + (first_pred_date.hour - prediction_hour), "hours"
+        )
     else:
         # Prediction is already performed at correct hour
         new_max_date_berlin = max_date_berlin

@@ -30,7 +30,7 @@ def input_df_times():
         "2022-10-30 01:00:00",  # still 2 am in Berlin (winter time)
         "2022-10-30 02:00:00",  # 3 am in berlin (winter time)
     ]
-    return pd.DataFrame({"date_time": [pd.to_datetime(x) for x in example_times]})
+    return pd.DataFrame({"date_time": [pd.to_datetime(x, utc=True) for x in example_times]})
 
 
 def test_mark_hours_to_modify(input_df_times):
@@ -44,10 +44,10 @@ def test_adjust_kfz_per_hour_grid():
     df = pd.DataFrame(
         {
             "date_time": {
-                0: pd.Timestamp("2023-06-20 13:00:00"),
-                1: pd.Timestamp("2023-06-20 14:00:00"),
-                2: pd.Timestamp("2023-06-20 15:00:00"),
-                3: pd.Timestamp("2023-06-20 01:00:00"),
+                0: pd.Timestamp("2023-06-20 13:00:00", tz="Europe/Berlin"),
+                1: pd.Timestamp("2023-06-20 14:00:00", tz="Europe/Berlin"),
+                2: pd.Timestamp("2023-06-20 15:00:00", tz="Europe/Berlin"),
+                3: pd.Timestamp("2023-06-20 01:00:00", tz="Europe/Berlin"),
             },
             "kfz_per_hour": {0: 100.0, 1: 80.0, 2: 0.0, 3: 100.0},
         }
@@ -55,10 +55,10 @@ def test_adjust_kfz_per_hour_grid():
     expected = pd.DataFrame(
         {
             "date_time": {
-                0: pd.Timestamp("2023-06-20 13:00:00"),
-                1: pd.Timestamp("2023-06-20 14:00:00"),
-                2: pd.Timestamp("2023-06-20 15:00:00"),
-                3: pd.Timestamp("2023-06-20 01:00:00"),
+                0: pd.Timestamp("2023-06-20 13:00:00", tz="Europe/Berlin"),
+                1: pd.Timestamp("2023-06-20 14:00:00", tz="Europe/Berlin"),
+                2: pd.Timestamp("2023-06-20 15:00:00", tz="Europe/Berlin"),
+                3: pd.Timestamp("2023-06-20 01:00:00", tz="Europe/Berlin"),
             },
             "kfz_per_hour": {0: 80.0, 1: 64.0, 2: 0.0, 3: 100.0},
         }

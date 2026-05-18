@@ -22,7 +22,7 @@ def get_max_date_time(
 
     # Ensure that the timestamp is in local time
     if date_now.tzinfo is None:
-        date_now = date_now.tz_localize(tz=tzlocal.get_localzone_name())
+        date_now = date_now.tz_convert(tz=tzlocal.get_localzone_name())
 
     # NOTE: tz_convert is idempotent,
     # i.e. If date_now is already in Berlin Time, the conversion has no effect

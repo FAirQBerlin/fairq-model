@@ -10,7 +10,6 @@ from fairqmodel.data_preprocessing import cap_outliers, fix_column_types
 from fairqmodel.db_connect import send_data_clickhouse
 from fairqmodel.prediction_kfz_adjusted import adjust_kfz_per_hour_grid
 from fairqmodel.retrieve_data import check_number_of_rows, retrieve_data
-from fairqmodel.time_handling import to_unix
 from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
@@ -75,14 +74,18 @@ def extract_predict_load_grid(
     table_name = f"model_predictions_{mode}"
     send_ok = []
 
-    for percentage in percentages:  # Loop will be of length one if we're not making the kfz simulation
+    for (
+        percentage
+    ) in percentages:  # Loop will be of length one if we're not making the kfz simulation
         dat_features_pct = adjust_kfz_per_hour_grid(dat_features, percentage)
 
         predictions, _, _ = models.predict(dat=dat_features_pct)
 
         if write_db:
             assert model_id is not None
-            df_for_db = prepare_preds_for_db(dat_features, predictions, model_id, date_time_forecast, mode, percentage)
+            df_for_db = prepare_preds_for_db(
+                dat_features, predictions, model_id, date_time_forecast, mode, percentage
+            )
             this_send_ok = write_preds_to_db(df_for_db, table_name)
             send_ok.append(this_send_ok)
         else:
@@ -125,9 +128,13 @@ def prepare_preds_for_db(
     df_for_db["value"] = round(df_for_db["value"], 1).apply(Decimal)
     if mode == "grid_sim":
         df_for_db["kfz_pct"] = percentage
-        df_for_db = df_for_db.loc[:, ["model_id", "date_time_forecast", "date_time", "x", "y", "kfz_pct", "value"]]
+        df_for_db = df_for_db.loc[
+            :, ["model_id", "date_time_forecast", "date_time", "x", "y", "kfz_pct", "value"]
+        ]
     elif mode == "grid":
-        df_for_db = df_for_db.loc[:, ["model_id", "date_time_forecast", "date_time", "x", "y", "value"]]
+        df_for_db = df_for_db.loc[
+            :, ["model_id", "date_time_forecast", "date_time", "x", "y", "value"]
+        ]
     else:
         raise ValueError(f"Mode must be one of: grid, grid_sim, but is mode = {mode}")
 
@@ -144,12 +151,10 @@ def write_preds_to_db(df_for_db: pd.DataFrame, table_name: str) -> bool:
     return: bool True if succeeded, false otherwise
     """
     logging.info(f"Preparing to send to db first_date_time = {min(df_for_db.loc[:, 'date_time'])}")
-    logging.info(f"Preparing to send to db date_time_forecast = {df_for_db.loc[0, 'date_time_forecast']}")
+    logging.info(
+        f"Preparing to send to db date_time_forecast = {df_for_db.loc[0, 'date_time_forecast']}"
+    )
     logging.info(f"Preparing to send to db last_date_time = {max(df_for_db.loc[:, 'date_time'])}")
-
-    # Convert date columns to unix format
-    df_for_db["date_time"] = to_unix(df_for_db["date_time"])
-    df_for_db["date_time_forecast"] = to_unix(df_for_db["date_time_forecast"])
 
     logging.info("Writing predictions to DB")
 

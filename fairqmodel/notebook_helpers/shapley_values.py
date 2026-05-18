@@ -14,13 +14,18 @@ from logging_config.logger_config import get_logger_config
 dictConfig(get_logger_config())
 
 
-def create_summary_plot(shap_values, feature_cols, model_infos, num_features=10, save=False, stage=1):
-    title = (
-        f"{model_infos['model_name']} - {model_infos['depvar']} - model_id {model_infos['model_id']} - stage {stage}"
-    )
+def create_summary_plot(
+    shap_values, feature_cols, model_infos, num_features=10, save=False, stage=1
+):
+    title = f"{model_infos['model_name']} - {model_infos['depvar']} - model_id {model_infos['model_id']} - stage {stage}"
     num_feat = np.minimum(num_features, len(feature_cols) + 1)
     shap.summary_plot(
-        shap_values, plot_type="bar", feature_names=feature_cols, max_display=num_feat, plot_size=0.15, show=False
+        shap_values,
+        plot_type="bar",
+        feature_names=feature_cols,
+        max_display=num_feat,
+        plot_size=0.15,
+        show=False,
     )
     plt.title(title)
     plt.tight_layout()
@@ -46,7 +51,7 @@ def explain_single_prediction(
     dat = dat.query(f"station_id == '{station_id}'").copy(deep=True)
 
     title_1 = f"{model_infos['model_name']} - {model_infos['depvar']} - model_id {model_infos['model_id']}"
-    date = dat.date_time.item().tz_localize(tz="UTC").tz_convert(tz="Europe/Berlin").strftime("%Y-%m-%d %H:%M:%S")
+    date = dat.date_time.item().tz_convert(tz="Europe/Berlin").strftime("%Y-%m-%d %H:%M:%S")
     title_2 = f"STAGE \n {date} - station '{station_id}'"
     title = f"{title_1} - {title_2}"
 
@@ -63,14 +68,19 @@ def create_waterfall_plot(stages, models, model_infos, dat, title, save):
     xtrain = dat.loc[:, models.feature_cols_1]
     labels = dat.loc[:, models.depvar]
 
-    dmatrix_1 = xgb.DMatrix(xtrain, label=labels, enable_categorical=True, feature_names=models.feature_cols_1)
+    dmatrix_1 = xgb.DMatrix(
+        xtrain, label=labels, enable_categorical=True, feature_names=models.feature_cols_1
+    )
 
     if 1 in stages:
         title_1 = title.replace("STAGE", "stage 1")
 
         explanation = explainer_1(dmatrix_1)
         exp = shap.Explanation(
-            explanation.values[0], explanation.base_values[0], xtrain.values[0], feature_names=models.feature_cols_1
+            explanation.values[0],
+            explanation.base_values[0],
+            xtrain.values[0],
+            feature_names=models.feature_cols_1,
         )
         shap.plots.waterfall(exp, show=False)
         _, h = plt.gcf().get_size_inches()
@@ -82,7 +92,9 @@ def create_waterfall_plot(stages, models, model_infos, dat, title, save):
             title_1 = f"{temp[0]} - {temp[1]}"
             model_type = model_infos["model_name"].split("_")[-1]
             date = datetime.now().strftime("%Y%m%d")
-            plt.savefig(f"./images/{model_infos['depvar']}_{model_type}/waterfall_plot_{title_1}_{date}.png")
+            plt.savefig(
+                f"./images/{model_infos['depvar']}_{model_type}/waterfall_plot_{title_1}_{date}.png"
+            )
         plt.show()
 
     if 2 in stages:
@@ -98,12 +110,17 @@ def create_waterfall_plot(stages, models, model_infos, dat, title, save):
             xtrain = dat.loc[:, models.feature_cols_2]
             labels = residual
 
-            dmatrix_2 = xgb.DMatrix(xtrain, label=labels, enable_categorical=True, feature_names=models.feature_cols_2)
+            dmatrix_2 = xgb.DMatrix(
+                xtrain, label=labels, enable_categorical=True, feature_names=models.feature_cols_2
+            )
 
             explainer_2 = shap.TreeExplainer(models.model_2)
             explanation = explainer_2(dmatrix_2)
             exp = shap.Explanation(
-                explanation.values[0], explanation.base_values[0], xtrain.values[0], feature_names=models.feature_cols_2
+                explanation.values[0],
+                explanation.base_values[0],
+                xtrain.values[0],
+                feature_names=models.feature_cols_2,
             )
             shap.plots.waterfall(exp, show=False)
             plt.gcf().set_size_inches(8, 4)
@@ -114,7 +131,9 @@ def create_waterfall_plot(stages, models, model_infos, dat, title, save):
                 title_2 = f"{temp[0]} - {temp[1]}"
                 model_type = model_infos["model_name"].split("_")[-1]
                 date = datetime.now().strftime("%Y%m%d")
-                plt.savefig(f"./images/{model_infos['depvar']}_{model_type}/waterfall_plot_{title_2}_{date}.png")
+                plt.savefig(
+                    f"./images/{model_infos['depvar']}_{model_type}/waterfall_plot_{title_2}_{date}.png"
+                )
             plt.show()
 
 
@@ -137,12 +156,19 @@ def create_split_plot(models, model_infos, dat, title, save=False):
         title = f"{temp[0]} - {temp[1]}"
         model_type = model_infos["model_name"].split("_")[-1]
         date = datetime.now().strftime("%Y%m%d")
-        plt.savefig(f"./images/{model_infos['depvar']}_{model_type}/prediction_split_plot_{title}_{date}.png")
+        plt.savefig(
+            f"./images/{model_infos['depvar']}_{model_type}/prediction_split_plot_{title}_{date}.png"
+        )
     plt.show()
 
 
 def explain_summary_plot(
-    stages: List[int], models, dat: pd.DataFrame, model_infos: dict, num_features_max: int = 10, save: bool = False
+    stages: List[int],
+    models,
+    dat: pd.DataFrame,
+    model_infos: dict,
+    num_features_max: int = 10,
+    save: bool = False,
 ):
     # Create dmatrix
     dmatrix_1 = xgb.DMatrix(
@@ -195,7 +221,14 @@ def explain_summary_plot(
 
 
 def explain_dependence_plots(
-    models, model_infos: dict, dat: pd.DataFrame, feature, alpha=0.5, save=False, cutoff=1, dot_size=16
+    models,
+    model_infos: dict,
+    dat: pd.DataFrame,
+    feature,
+    alpha=0.5,
+    save=False,
+    cutoff=1,
+    dot_size=16,
 ):
     if feature in models.feature_cols_1:
         stage = 1
@@ -205,9 +238,7 @@ def explain_dependence_plots(
         logging.warning(f"Selected feature {feature} isn't used in stage 1 nor stage 2.")
         return
 
-    title = (
-        f"{model_infos['model_name']} - {model_infos['depvar']} - model_id {model_infos['model_id']} - stage {stage}"
-    )
+    title = f"{model_infos['model_name']} - {model_infos['depvar']} - model_id {model_infos['model_id']} - stage {stage}"
     model_type = model_infos["model_name"].split("_")[-1]
 
     # Create dmatrix
@@ -250,7 +281,7 @@ def explain_dependence_plots(
         shap_values,
         dat_data,
         xmin=f"percentile({cutoff})",
-        xmax=f"percentile({100-cutoff})",
+        xmax=f"percentile({100 - cutoff})",
         interaction_index=None,
         alpha=alpha,
         dot_size=dot_size,
@@ -260,5 +291,7 @@ def explain_dependence_plots(
     plt.tight_layout()
     if save:
         date = datetime.now().strftime("%Y%m%d")
-        plt.savefig(f"./images/{model_infos['depvar']}_{model_type}/dep_plot_{title} - {feature}_{date}.png")
+        plt.savefig(
+            f"./images/{model_infos['depvar']}_{model_type}/dep_plot_{title} - {feature}_{date}.png"
+        )
     plt.show()

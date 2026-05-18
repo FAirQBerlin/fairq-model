@@ -15,7 +15,7 @@ from fairqmodel.model_parameters import get_pollution_limits, get_tweak_values
 from fairqmodel.prediction_lag_adjusted import make_lag_adjusted_prediction
 from fairqmodel.retrieve_data import retrieve_data
 from fairqmodel.time_features import time_features
-from fairqmodel.time_handling import timestamp_to_np_datetime64, to_unix
+from fairqmodel.time_handling import timestamp_to_tz_aware
 
 
 def prediction_kfz_adjusted(
@@ -95,7 +95,7 @@ def prediction_kfz_adjusted(
                 "station_id": [station_id],
                 "model_id": [model_id],
                 "date": [date_min_current.date()],
-                "date_time_forecast": [to_unix(date_min_absolute)],
+                "date_time_forecast": [date_min_absolute],
                 "pollutant_limit": [limit_value],
                 "tweak_value": [tweak_value],
             }
@@ -110,12 +110,8 @@ def prediction_kfz_adjusted(
                 dat_adjusted=dat_current_day.copy(deep=True),
                 percentage=percentage,
                 hours_to_modify=hours_to_modify,
-                date_min_current=dat_current_day.date_time.min()
-                .tz_localize(tz="UTC")
-                .tz_convert(tz="Europe/Berlin"),
-                date_max_current=dat_current_day.date_time.max()
-                .tz_localize(tz="UTC")
-                .tz_convert(tz="Europe/Berlin"),
+                date_min_current=dat_current_day.date_time.min().tz_convert(tz="Europe/Berlin"),
+                date_max_current=dat_current_day.date_time.max().tz_convert(tz="Europe/Berlin"),
                 model_settings=model_settings,
             )
 
@@ -162,8 +158,7 @@ def pre_fill_lags(
 
     # Remove all observations after 'min_date'
     # NOTE: 'date_min_absolute' is in Berlin Time.
-    # Since the 'date_time' column is tz naive but the dates are in UTC, 'date_min_absolute' is casted to UTC
-    future_idx = dat["date_time"] > timestamp_to_np_datetime64(date_min_absolute)
+    future_idx = dat["date_time"] > timestamp_to_tz_aware(date_min_absolute)
 
     dat.loc[future_idx, depvar] = None
 
@@ -180,12 +175,13 @@ def pre_fill_lags(
     # Perform the forecast for this part of the data (possibly for several days)
     forecast = make_forecast(
         date_min=date_min_absolute,
-        date_max=dat.date_time.max().tz_localize(tz="UTC").tz_convert(tz="Europe/Berlin"),
+        date_max=dat.date_time.max().tz_convert(tz="Europe/Berlin"),
         dat=dat.loc[future_idx, :],
         model_settings=model_settings,
     )
 
     # Fill depvar column after 'date_min' with predicted values
+    dat[depvar] = dat[depvar].astype(float)
     dat.loc[future_idx, depvar] = forecast["pred"].values
 
     # Update the lags, now including all future time steps
@@ -194,7 +190,7 @@ def pre_fill_lags(
     )
 
     # Change the temporarily overwritten observation values back to their original value
-    dat.loc[:, depvar] = observations_backup
+    dat.loc[:, depvar] = observations_backup.astype(float)
 
     dat = fix_column_types(
         dat, model_settings["categorical_feature_cols"], model_settings["metric_feature_cols"]
@@ -299,7 +295,7 @@ def mark_hours_to_modify(date_time_column: pd.Series) -> pd.Series:
              eligible for traffic reduction.
     """
     berlin_tz = pytz.timezone("Europe/Berlin")
-    datetimes_in_berlin_time = date_time_column.dt.tz_localize("UTC").dt.tz_convert(berlin_tz)
+    datetimes_in_berlin_time = date_time_column.dt.tz_convert(berlin_tz)
     selected_hours = np.arange(5, 22).tolist()  # Adjustments are performed between 5am and 9pm
     hours_to_modify = [dt.hour in selected_hours for dt in datetimes_in_berlin_time]
     return pd.Series(hours_to_modify, name="date_time", dtype=bool)
@@ -314,11 +310,9 @@ def check_date_min(date_min: pd.Timestamp) -> pd.Timestamp:
     :return: pd.Timestamp, Available 'date_min' in Berlin Time
     """
     with db_connect_source() as db:
-        most_recent_observation_date = (
-            pd.Timestamp(db.query_dataframe(get_query("most_recent_observation")).values[0][0])
-            .tz_localize(tz="UTC")  # Entries in the DB are in UTC, but time zone naive
-            .tz_convert(tz="Europe/Berlin")
-        )
+        most_recent_observation_date = pd.Timestamp(
+            db.query_dataframe(get_query("most_recent_observation")).values[0][0]
+        ).tz_convert(tz="Europe/Berlin")
 
     if date_min - pd.Timedelta(1, "hours") > most_recent_observation_date:
         logging.warning(f"Forecast for selected min_date {date_min.date()} can't be performed")
@@ -403,9 +397,7 @@ def select_data(
     dat_all_days = pre_fill_lags(dat_all_days, depvar, model_settings, date_min_absolute)
 
     # Cut off dates prior to date min (that were required to build lags)
-    dat_all_days.query(
-        f"date_time >= '{timestamp_to_np_datetime64(date_min_absolute)}'", inplace=True
-    )
+    dat_all_days.query(f"date_time >= '{timestamp_to_tz_aware(date_min_absolute)}'", inplace=True)
 
     return dat_all_days
 
@@ -435,8 +427,8 @@ def select_day(
     # Example: For the '2022-10-09' the time points ['2022-10-09 01:00:00', '2022-10-10 00:00:00']
     dat_current_day.query(
         "date_time > '{}' and date_time <= '{}'".format(
-            timestamp_to_np_datetime64(date_min_current),
-            timestamp_to_np_datetime64(date_max_current),
+            timestamp_to_tz_aware(date_min_current),
+            timestamp_to_tz_aware(date_max_current),
         ),
         inplace=True,
     )

@@ -59,9 +59,10 @@ def arrange_for_lag_pred_tests() -> Tuple[pd.DataFrame, dict, pd.Timestamp, List
     dat.loc[:, "date_time"] = np.arange(
         datetime(2021, 1, 1), datetime(2022, 1, 1), timedelta(hours=1)
     ).astype(datetime)[:time_points]
+    dat["date_time"] = dat["date_time"].dt.tz_localize("UTC")
 
     # Select the date that is used as 'min_date' for the pre_fill function
-    date_min = pd.Timestamp("2021-01-01 03:00:00")
+    date_min = pd.Timestamp("2021-01-01 03:00:00", tz="UTC")
 
     # Preprocess the data
     dat = time_features(dat, depvar=depvar, lags_actual=lags_actual, lags_avg=lags_avg)

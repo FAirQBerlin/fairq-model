@@ -29,7 +29,7 @@ from fairqmodel.prediction_lag_adjusted import make_lag_adjusted_prediction
 from fairqmodel.read_write_model_db import save_model_to_db
 from fairqmodel.retrieve_data import retrieve_data
 from fairqmodel.time_features import time_features
-from fairqmodel.time_handling import get_current_local_time, to_unix
+from fairqmodel.time_handling import get_current_local_time
 from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
@@ -59,7 +59,9 @@ dev = False
 # Choose lags
 use_lags = get_command_args("use_lags") or False
 
-lags_actual, lags_avg = get_lags(use_lags=use_lags, selected_lags=[24, 48], lags_avg=[1, 2, 3, 4, 5])
+lags_actual, lags_avg = get_lags(
+    use_lags=use_lags, selected_lags=[24, 48], lags_avg=[1, 2, 3, 4, 5]
+)
 
 # Retrieve and pre-process data from the DB
 date_min = pd.Timestamp(get_train_date_min(depvar), tz="Europe/Berlin")
@@ -175,12 +177,10 @@ for fold in reversed(time_cv_folds):
         df_predictions = all_results.rename(columns={"pred": "value"}).drop(columns=[depvar])
         df_predictions["model_id"] = model_id
 
-        # Convert date columns to unix format
-        df_predictions["date_time"] = to_unix(df_predictions["date_time"])
-        df_predictions["date_time_forecast"] = to_unix(df_predictions["date_time_forecast"])
-
         # Reorder columns
-        df_predictions = df_predictions[["model_id", "date_time_forecast", "date_time", "station_id", "value"]]
+        df_predictions = df_predictions[
+            ["model_id", "date_time_forecast", "date_time", "station_id", "value"]
+        ]
 
         send_data_clickhouse(
             df=df_predictions,

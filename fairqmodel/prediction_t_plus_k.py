@@ -10,7 +10,6 @@ from fairqmodel.db_connect import send_data_clickhouse
 from fairqmodel.model_wrapper import ModelWrapper
 from fairqmodel.prediction_lag_adjusted import make_lag_adjusted_prediction
 from fairqmodel.read_write_model_db import retrieve_model_from_db
-from fairqmodel.time_handling import to_unix
 from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
@@ -99,9 +98,6 @@ def prediction_t_plus_k(
             df_predictions = df_predictions[
                 ["model_id", "date_time_forecast", "date_time", "station_id", "value"]
             ]
-            # Convert date_time to unix
-            df_predictions["date_time"] = to_unix(df_predictions["date_time"])
-            df_predictions["date_time_forecast"] = to_unix(df_predictions["date_time_forecast"])
 
             send_data_clickhouse(
                 df=df_predictions,

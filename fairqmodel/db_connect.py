@@ -5,8 +5,8 @@ from logging.config import dictConfig
 from pathlib import Path
 from typing import Optional
 
+import clickhouse_connect
 import pandas as pd
-from clickhouse_driver import Client
 from dotenv import load_dotenv
 from retrying import retry
 
@@ -27,42 +27,73 @@ def db_suffix() -> str:
     return db_suffix[env]
 
 
-def db_connect_source() -> Client:
+class ClickHouseWrapper:
+    """
+    Wrapper around the native clickhouse-connect Client that simulates clickhouse-driver syntax.
+    """
+
+    def __init__(self, client):
+        self._client = client
+
+    def execute(self, query: str, params: dict = None, **kwargs):
+        return self._client.command(query, parameters=params, **kwargs)
+
+    def query_dataframe(self, query: str, params: dict = None) -> pd.DataFrame:
+        clean_query = query.strip().rstrip(";")
+        return self._client.query_df(clean_query, parameters=params)
+
+    def insert_dataframe(self, query: str, dataframe: pd.DataFrame, settings: dict = None):
+        table_name = query.strip().split()[2]
+        self._client.insert_df(df=dataframe, table=table_name, settings=settings)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._client.close()
+
+
+def db_connect_source() -> ClickHouseWrapper:
     """
     Return Client object for db connection to clickhouse.
     :return: Client object for db connection to clickhouse
     """
     max_threads = max(multiprocessing.cpu_count() - 4, 1)
-    return Client(
+
+    native_client = clickhouse_connect.get_client(
         host=os.getenv("DB_HOST"),
-        port=None,
+        port=int(os.getenv("DB_PORT", 8443)),
         database=os.getenv("DB_SOURCE"),
-        user=os.getenv("DB_USER"),
+        username=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
         secure=True,
         verify=True,
-        ca_certs="certificates/INWT-IPA-CA.pem",
-        settings={"use_numpy": True, "max_threads": max_threads},
+        ca_cert="certificates/INWT-IPA-CA.pem",
+        settings={"max_threads": max_threads},
     )
 
+    return ClickHouseWrapper(native_client)
 
-def db_connect_target() -> Client:
+
+def db_connect_target() -> ClickHouseWrapper:
     """
     Return Client object for db connection to clickhouse.
     :return: Client object for db connection to clickhouse
     """
     max_threads = max(multiprocessing.cpu_count() - 4, 1)
-    return Client(
+    native_client = clickhouse_connect.get_client(
         host=os.getenv("DB_HOST"),
-        port=None,
+        port=int(os.getenv("DB_PORT", 8443)),
         database=os.getenv("DB_TARGET"),
-        user=os.getenv("DB_USER"),
+        username=os.getenv("DB_USER"),
         password=os.getenv("DB_PASSWORD"),
         secure=True,
-	    verify=True,
-	    ca_certs="certificates/INWT-IPA-CA.pem",
-        settings={"use_numpy": True, "max_threads": max_threads},
+        verify=True,
+        ca_cert="certificates/INWT-IPA-CA.pem",
+        settings={"max_threads": max_threads},
     )
+
+    return ClickHouseWrapper(native_client)
 
 
 def get_query(query: str, parametrized_tables: Optional[dict] = None) -> str:
@@ -93,7 +124,9 @@ def get_query(query: str, parametrized_tables: Optional[dict] = None) -> str:
         query = query.format(**parametrized_tables)
 
     if "{" in query:
-        ValueError(f"There is a parameter left in the query that could not be substituted by {parametrized_tables}")
+        ValueError(
+            f"There is a parameter left in the query that could not be substituted by {parametrized_tables}"
+        )
 
     return query
 
@@ -137,7 +170,7 @@ def send_data_clickhouse(
     return True
 
 
-def optimizing_table_and_mv(db: Client, table_name: str, schema_name: str, mode: str):
+def optimizing_table_and_mv(db: ClickHouseWrapper, table_name: str, schema_name: str, mode: str):
     """ "
     Optimize table and materialized view (mv) after insert.
     :db: Client object for db connection to clickhouse
@@ -163,9 +196,9 @@ def check_for_replacing_merge_tree(table_name: str, schema_name: str):
     """
     with db_connect_target() as db:
         logging.info("Checking if table engine is 'ReplacingMergeTree'...")
-        table_engine = db.execute(
+        table_engine = db.query_dataframe(
             f"SELECT engine FROM system.tables where database = '{schema_name}' and name = '{table_name}';"
-        )[0][0]
+        ).iloc[0, 0]
     if table_engine != "ReplacingMergeTree":
         raise Exception(
             f"Can't use mode 'replace' for table {table_name} since as table engine is not ReplacingMergeTree."
@@ -181,7 +214,7 @@ def materialized_view_exists(table_name: str, schema_name: str):
     """
     with db_connect_target() as db:
         logging.info("Checking if materialized view exists ...")
-        mv_exists = db.execute(f"exists {schema_name}.{table_name}_processed;")[0][0]
+        mv_exists = db.query_dataframe(f"exists {schema_name}.{table_name}_processed;").iloc[0, 0]
     return mv_exists == 1
 
 

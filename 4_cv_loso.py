@@ -28,7 +28,7 @@ from fairqmodel.model_wrapper import ModelWrapper
 from fairqmodel.read_write_model_db import save_model_to_db
 from fairqmodel.retrieve_data import retrieve_data
 from fairqmodel.time_features import time_features
-from fairqmodel.time_handling import get_current_local_time, to_unix
+from fairqmodel.time_handling import get_current_local_time
 from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
@@ -52,7 +52,9 @@ date_min = get_train_date_min(depvar)
 
 date_max = "2024-07-01 00:00:00"
 
-logging.info("Started '4_cv_loso' for {} for time frame: [{}, {}]".format(depvar, date_min, date_max))
+logging.info(
+    "Started '4_cv_loso' for {} for time frame: [{}, {}]".format(depvar, date_min, date_max)
+)
 
 dat = retrieve_data(
     mode="stations",
@@ -78,7 +80,9 @@ non_missing_rows = dat.loc[:, depvar].notna()
 dat = dat.loc[non_missing_rows, :].reset_index(drop=True)
 
 # Select variables and fix dtypes
-feature_cols, metric_feature_cols, categorical_feature_cols = get_variables(depvar, lags_actual, lags_avg, dev=dev)
+feature_cols, metric_feature_cols, categorical_feature_cols = get_variables(
+    depvar, lags_actual, lags_avg, dev=dev
+)
 
 dat = fix_column_types(dat, categorical_feature_cols, metric_feature_cols)
 
@@ -124,7 +128,9 @@ for station_id in all_station_ids:
         # Write models to DB
         model_name = f"spatial_cv_without_station_{station_id}"
 
-        model_1_description, model_2_description = create_model_description(models, dat_train, lags_actual, lags_avg)
+        model_1_description, model_2_description = create_model_description(
+            models, dat_train, lags_actual, lags_avg
+        )
         model_id = save_model_to_db(
             models=models,
             model_name=model_name,
@@ -138,10 +144,9 @@ for station_id in all_station_ids:
         df_predictions["value"] = predictions
         df_predictions["model_id"] = model_id
 
-        # Convert date column to unix format
-        df_predictions["date_time"] = to_unix(df_predictions["date_time"])
-
         # Reorder columns
         df_predictions = df_predictions[["model_id", "date_time", "station_id", "value"]]
 
-        send_data_clickhouse(df=df_predictions, table_name="model_predictions_spatial_cv", mode="replace")
+        send_data_clickhouse(
+            df=df_predictions, table_name="model_predictions_spatial_cv", mode="replace"
+        )

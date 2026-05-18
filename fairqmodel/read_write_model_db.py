@@ -8,7 +8,6 @@ import pandas as pd
 from fairqmodel.db_connect import db_connect_target, get_query, send_data_clickhouse
 from fairqmodel.model_wrapper import ModelWrapper
 from fairqmodel.read_write_model_aux_functions import model_as_str, model_from_str
-from fairqmodel.time_handling import to_unix
 from logging_config.logger_config import get_logger_config
 
 dictConfig(get_logger_config())
@@ -51,7 +50,7 @@ def save_model_to_db(
     model_information = pd.DataFrame.from_dict(
         {
             "model_id": [model_id],
-            "date_time_training_execution": [to_unix(execution_time)],
+            "date_time_training_execution": [execution_time],
             "pollutant": [depvar],
             "model_name": [model_name],
             "description": [model_1_description],
@@ -86,13 +85,19 @@ def retrieve_model_from_db(model_id: int) -> ModelWrapper:
         except:  # noqa
             raise
 
-        raise ValueError("More than one model with the same id found in the database. Will be fixed in the next run.")
+        raise ValueError(
+            "More than one model with the same id found in the database. Will be fixed in the next run."
+        )
 
     model_object_str = dat_models["model_object"].item()
     model_object_residuals_str = dat_models["model_object_residuals"].item()
 
     model_1 = model_from_str(model_object_str)
-    model_2 = model_from_str(model_object_residuals_str) if model_object_residuals_str is not None else None
+    model_2 = (
+        model_from_str(model_object_residuals_str)
+        if model_object_residuals_str is not None
+        else None
+    )
 
     depvar = dat_models["pollutant"].item()
 
@@ -113,5 +118,7 @@ def write_model_to_models_final(depvar: str, domain: str, model_id: int) -> None
     :param domain: str, temporal or spatial
     :param model_id: int, model ID
     """
-    row_models_final = pd.DataFrame({"pollutant": [depvar], "domain": [domain], "model_id": [model_id]})
+    row_models_final = pd.DataFrame(
+        {"pollutant": [depvar], "domain": [domain], "model_id": [model_id]}
+    )
     send_data_clickhouse(df=row_models_final, table_name="models_final", mode="replace")
