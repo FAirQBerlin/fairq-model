@@ -1,16 +1,16 @@
-"""
-This script performs temporal cross validation for model evaluation.
+"""Perform temporal cross validation for model evaluation.
+
 For a selected number of folds a model is trained with the parameters to be evaluated.
 The predictions for each fold can be written to the DB.
 The metrics per fold can be logged, however the actual evaluation is calculated on the
 predictions written to the DB and can be seen in a Redash Dashboard.
 """
 
-import logging
+import sys
 import time
-from logging.config import dictConfig
 
 import pandas as pd
+from loguru import logger
 
 from fairqmodel.build_splits import prepare_folded_input, slice_data_frame
 from fairqmodel.command_line_args import get_command_args
@@ -30,9 +30,9 @@ from fairqmodel.read_write_model_db import save_model_to_db
 from fairqmodel.retrieve_data import retrieve_data
 from fairqmodel.time_features import time_features
 from fairqmodel.time_handling import get_current_local_time
-from logging_config.logger_config import get_logger_config
 
-dictConfig(get_logger_config())
+logger.remove()
+logger.add(sys.stdout, level="INFO")
 
 script_start_time = time.time()
 
@@ -59,20 +59,16 @@ dev = False
 # Choose lags
 use_lags = get_command_args("use_lags") or False
 
-lags_actual, lags_avg = get_lags(
-    use_lags=use_lags, selected_lags=[24, 48], lags_avg=[1, 2, 3, 4, 5]
-)
+lags_actual, lags_avg = get_lags(use_lags=use_lags, selected_lags=[24, 48], lags_avg=[1, 2, 3, 4, 5])
 
 # Retrieve and pre-process data from the DB
 date_min = pd.Timestamp(get_train_date_min(depvar), tz="Europe/Berlin")
 date_max = pd.Timestamp("2024-06-25", tz="Europe/Berlin")
 n_train_years = int((date_max - date_min).total_seconds() / (3600 * 24 * 365))
 
-logging.info("Started '5_cv_time_t_plus_k' for {}".format(depvar))
-logging.info(
-    "CV is performed for {} folds each containing {} days with a steps size of {}h".format(
-        n_cv_windows, n_pred_days, step_size
-    )
+logger.info(f"Started '5_cv_time_t_plus_k' for {depvar}")
+logger.info(
+    f"CV is performed for {n_cv_windows} folds each containing {n_pred_days} days with a steps size of {step_size}h"
 )
 
 dat = retrieve_data(
@@ -119,11 +115,11 @@ time_cv_folds = prepare_folded_input(
 
 # Store start time of training for DB entry
 date_time_training_execution = get_current_local_time()
-logging.info(f"date_time_training_execution: '{date_time_training_execution}'")
+logger.info(f"date_time_training_execution: '{date_time_training_execution}'")
 
 # This loop evaluates the quality of temporal predictions
 loop_idx = 0
-for fold in reversed(time_cv_folds):
+for loop_idx, fold in enumerate(reversed(time_cv_folds)):
     fold["test"] = slice_data_frame(
         dat,
         lower_bound=fold["test_window_cut_min_modified"],
@@ -151,11 +147,11 @@ for fold in reversed(time_cv_folds):
     # Log the progress
     ts_fold_id = fold["ts_fold_id"]
     max_test_date = fold["ts_fold_max_test_date"].strftime("%Y-%m-%d %H:%M:%S")
-    logging.info(f"{ts_fold_id=}\t{max_train_date=}\t{max_test_date=}")
+    logger.info(f"{ts_fold_id=}\t{max_train_date=}\t{max_test_date=}")
 
     # Eval the current fold
     all_results, _ = make_lag_adjusted_prediction(
-        fold, models, feature_cols, depvar, lags_actual, lags_avg, calc_metrics=calc_metrics
+        fold, models, depvar, lags_actual, lags_avg, calc_metrics=calc_metrics
     )
     if write_to_db:
         # Write models to DB
@@ -178,18 +174,14 @@ for fold in reversed(time_cv_folds):
         df_predictions["model_id"] = model_id
 
         # Reorder columns
-        df_predictions = df_predictions[
-            ["model_id", "date_time_forecast", "date_time", "station_id", "value"]
-        ]
+        df_predictions = df_predictions[["model_id", "date_time_forecast", "date_time", "station_id", "value"]]
 
         send_data_clickhouse(
             df=df_predictions,
             table_name="model_predictions_temporal_cv",
             mode="replace",
         )
-    loop_idx += 1
-
 
 script_end_time = time.time()
 total_time = (script_end_time - script_start_time) // 60
-logging.info(f"Finished script in total time of ~ {total_time} minutes.")
+logger.info(f"Finished script in total time of ~ {total_time} minutes.")

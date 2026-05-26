@@ -1,6 +1,6 @@
-import logging
-from logging.config import dictConfig
-from typing import Optional
+"""Process a single grid prediction batch message end-to-end."""
+
+from loguru import logger
 
 from fairqmodel.db_connect import db_connect_target, get_query
 from fairqmodel.extract_predict_load import extract_predict_load_grid
@@ -8,14 +8,19 @@ from fairqmodel.get_max_date_time import get_max_date_time
 from fairqmodel.prediction_t_plus_k import get_model_settings
 from fairqmodel.read_write_model_aux_functions import model_name_str
 from fairqmodel.time_handling import get_model_start_time
-from logging_config.logger_config import get_logger_config
-
-dictConfig(get_logger_config())
 
 
 # debugging with msg = '{"batch_id": 1, "depvar": "no2"}'; mode = "grid"; write_db = False
-def process_batch(msg, write_db: bool = False, mode: Optional[str] = "grid"):
-    logging.info(f"Processing message {msg}")
+def process_batch(msg, write_db: bool = False, mode: str | None = "grid"):
+    """Process a single prediction batch message and return the batch report.
+
+    :param msg: str or dict, message containing batch_id and depvar
+    :param write_db: bool, whether to write predictions to the database
+    :param mode: str, one of "grid" or "grid_sim"
+
+    :return: dict, batch report with batch id and success status
+    """
+    logger.info(f"Processing message {msg}")
     batch = int(eval(msg)["batch_id"])
     depvar = eval(msg)["depvar"]
     model_type = "spatial"
@@ -23,7 +28,7 @@ def process_batch(msg, write_db: bool = False, mode: Optional[str] = "grid"):
     if mode not in ["grid", "grid_sim"]:
         raise ValueError(f"Mode must be one of: grid, grid_sim, but is mode = {mode}")
 
-    logging.info("Starting with depvar = {}, write_db = {}".format(depvar, write_db))
+    logger.info(f"Starting with depvar = {depvar}, write_db = {write_db}")
 
     # Retrieve selected model and settings
     with db_connect_target() as db:
@@ -31,7 +36,7 @@ def process_batch(msg, write_db: bool = False, mode: Optional[str] = "grid"):
 
     model_id = model_id.model_id[0]
 
-    logging.info("Using model with model_id {}".format(model_id))
+    logger.info(f"Using model with model_id {model_id}")
 
     query_params = {"model_type": model_name_str(model_type), "depvar": depvar}
 
@@ -54,6 +59,6 @@ def process_batch(msg, write_db: bool = False, mode: Optional[str] = "grid"):
         mode=mode,
     )
 
-    logging.info(f"Finished process_batch batch: {batch}, depvar {depvar}")
+    logger.info(f"Finished process_batch batch: {batch}, depvar {depvar}")
 
     return batch_report

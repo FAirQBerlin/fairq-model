@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "fairqmodel"
-version = "2026.05.1"
+version = "2026.05.3"
 description = "This repo contains the Python code of the entire life cycle of the air quality model"
 authors = ["Henrik Tillkorn <henrik.tillkorn@inwt-statistics.de>, Milan Flach <milan.flach@inwt-statistics.de>"]
 readme = "README.md"
@@ -8,61 +8,13 @@ packages = [{ include = "fairqmodel" }]
 
 
 [tool.bumpver]
-current_version = "2026.05.1"
+current_version = "2026.05.3"
 version_pattern = "YYYY.0M.PATCH"
 commit_message = "bump version to {old_version} -> {new_version}"
 tag_message = "v{new_version}"
 commit = true
 tag = true
 push = false
-
-[bumpver.file_patterns]
-"poetry.toml" = [
-    'version = "{version}"',
-    'current_version = "{version}"'
-]
-"fairqmodel/__init__.py" = [
-    '__version__ = "{version}"',
-]
-
-[tool.poetry.dependencies]
-python = ">=3.11,<3.15"
-pandas = "^3.0.2"
-xgboost = "^3.2.0"
-scikit-learn = "^1.7.2"
-tqdm = "^4.67.3"
-python-dateutil = "^2.9.0.post0"
-pytz-deprecation-shim = "^0.1.0.post0"
-retrying = "^1.4.2"
-tzdata = "^2026.1"
-tzlocal = "^5.3.1"
-sqlalchemy = "^2.0.49"
-numpy = "^2.4.4"
-python-dotenv = "^1.2.1"
-clickhouse-connect = "^0.15.1"
-
-[tool.poetry.group.dev.dependencies]
-bumpver = "*"
-ruff = "*"
-black = "*"
-mypy = "*"
-pytest = "^9.0.3"
-cmd2 = "^3.4.0"
-flake8 = "^7.3.0"
-gunicorn = ">=25.3,<27.0"
-iniconfig = "^2.3.0"
-ipykernel = "^7.2.0"
-isort = "^8.0.1"
-matplotlib = "^3.10.7"
-optuna = "^4.8.0"
-optuna-dashboard = "^0.20.0"
-pygments = "^2.20.0"
-pyjwt = "^2.12.1"
-pyrsistent = "^0.20.0"
-pytest-cov = "^7.1.0"
-plotly = "^6.6.0"
-jupyterlab = "^4.5.6"
-
 
 [tool.bumpver.file_patterns]
 "pyproject.toml" = [
@@ -73,54 +25,84 @@ jupyterlab = "^4.5.6"
     '^__version__ = "{version}"',
 ]
 
+[tool.poetry.dependencies]
+python = ">=3.11,<3.15"
+pandas = "^3.0.2"
+xgboost = "^3.2.0"
+scikit-learn = "^1.7.2"
+tqdm = "^4.67.3"
+python-dateutil = "^2.9.0.post0"
+pytz-deprecation-shim = "^0.1.0.post0"
+tzdata = "^2026.1"
+tzlocal = "^5.3.1"
+sqlalchemy = "^2.0.49"
+numpy = "^2.4.4"
+python-dotenv = "^1.2.1"
+clickhouse-connect = "^1.0.0"
+loguru = "^0.7.3"
+tenacity = "^9.0.0"
+pytz = "^2026.2"
+
+[tool.poetry.group.dev.dependencies]
+bumpver = "*"
+ruff = "*"
+mypy = "*"
+pytest = "^9.0.3"
+optuna = "^4.8.0"
+
+
 [tool.pytest.ini_options]
 markers = [
-    "local: marks tests that should only run during local development",
+    "tests_on_real_clickhouse: marks tests that require a real ClickHouse instance",
+]
+addopts = "-m 'not tests_on_real_clickhouse'"
+testpaths = ["fairqmodel/tests"]
+filterwarnings = [
+    # upstream bug in clickhouse-connect 1.0.0 (ctypes 'u' type code raised via frozen importlib)
+    "ignore:The 'u' type code is deprecated:DeprecationWarning",
 ]
 
 [tool.ruff]
-line-length = 100
-target-version = "py310"
+line-length = 120
+target-version = "py311"
+exclude = [
+    "notebooks/",
+    ".venv/"
+]
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["ANN", "COM812", "D", "ISC001"]
-per-file-ignores = { "fairq_data_traffic_api/tests/*" = ["S101"] }
+ignore = [
+    "ANN",    # type annotations
+    "COM812", # trailing comma
+    "D203",   # one-blank-line-before-class (conflicts with D211)
+    "D213",   # multi-line-summary-second-line (conflicts with D212)
+    "EM",     # exception message style
+    "TRY003", # exception message length
+    "TRY002", # custom exception class
+    "FBT",    # boolean arg style
+    "PLR0913",# too many arguments
+    "TC001",  # type-checking import (own package)
+    "TC002",  # type-checking import third-party
+    "TC003",  # type-checking import stdlib
+    "PD002",  # inplace=True
+    "S307",   # eval() usage
+    "S108",   # /tmp usage
+    "S101",   # assert usage
+    "S608",   # SQL injection via string
+    "TD",     # TODO style
+    "FIX002", # fixme
+    "C416",   # list comprehension
+]
+
+[tool.ruff.lint.per-file-ignores]
+"fairqmodel/tests/test_*.py" = ["S101"]
+"fairqmodel/deprecated/*" = ["ALL"]
+"fairqmodel/deprecated/**/*" = ["ALL"]
+
+[tool.ruff.lint.flake8-type-checking]
+quote-annotations = true
 
 [tool.mypy]
-ignore_missing_imports = false
-exclude = "fairqmodel/notebook_helpers/"
-
-[[tool.mypy.overrides]]
-module = [
-    "clickhouse_driver",
-    "clickhouse_driver.*"
-]
 ignore_missing_imports = true
-
-[tool.black]
-line-length = 120
-target-version = ['py39']
-include = '\.pyi?$'
-exclude = '''
-(
-  /(
-      \.eggs         # exclude a few common directories in the
-    | \.git          # root of the project
-    | \.hg
-    | \.mypy_cache
-    | \.tox
-    | \.venv
-    | _build
-    | buck-out
-    | build
-    | dist
-  )/
-  | foo.py           # also separately exclude a file named foo.py in
-                     # the root of the project
-)
-'''
-
-[tool.flakehell]
-base = "https://raw.githubusercontent.com/life4/flakehell/master/pyproject.toml"
-baseline = ".flakehell_baseline"
+exclude = "fairqmodel/deprecated/"

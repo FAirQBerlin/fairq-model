@@ -1,29 +1,27 @@
-import logging
-from logging.config import dictConfig
-from typing import List, Optional, Tuple
+"""Train XGBoost models for hyper-parameter optimization with early stopping."""
 
 import pandas as pd
 import xgboost as xgb
+from loguru import logger
 
-from logging_config.logger_config import get_logger_config
-
-dictConfig(get_logger_config())
+FIRST_STAGE = 1
+SECOND_STAGE = 2
 
 
 def train_hpo(
     dat: pd.DataFrame,
     dat_early_stopping: pd.DataFrame,
     depvar: str,
-    feature_cols_1: List[str],
-    feature_cols_2: Optional[List[str]],
+    feature_cols_1: list[str],
+    feature_cols_2: list[str] | None,
     xgb_param: dict,
     n_rounds: int,
     early_stopping_rounds: int,
     early_stopping_threshold: float,
-    first_stage_model: Optional[xgb.Booster] = None,
-) -> Tuple[xgb.Booster, Optional[xgb.Booster]]:
-    """
-    Model training with given parameters for hyper parameter optimization.
+    first_stage_model: xgb.Booster | None = None,
+) -> tuple[xgb.Booster, xgb.Booster | None]:
+    """Train a model with given parameters for hyper parameter optimization.
+
     This function is used within the HPO.
     Only one stage can be optimized at a time.
 
@@ -43,7 +41,7 @@ def train_hpo(
 
     :return: Tuple[xgb.Booster, Optional[xgb.Booster]]
     """
-    logging.info("Started model training")
+    logger.info("Started model training")
     # Infer for which stage the given parameters are used
     stage_to_optimize = 1 if first_stage_model is None else 2
 
@@ -62,7 +60,7 @@ def train_hpo(
     dmatrix_1 = xgb.DMatrix(dat.loc[:, feature_cols_1], label=dat[depvar], enable_categorical=True)
 
     # Case: A single model is optimized (either solo model or first of two-stage-model)
-    if stage_to_optimize == 1:
+    if stage_to_optimize == FIRST_STAGE:
         model_1 = train_first_stage(
             depvar,
             xgb_param,
@@ -75,7 +73,7 @@ def train_hpo(
         )
 
     # Case: The second model of two-stage-model is optimized
-    elif stage_to_optimize == 2:
+    elif stage_to_optimize == SECOND_STAGE:
         assert first_stage_model is not None
         assert feature_cols_2 is not None
         model_2 = train_second_stage(
@@ -92,14 +90,14 @@ def train_hpo(
             first_stage_model,
         )
     else:
-        logging.warning(f"'stage_to_optimize' cannot be set to {stage_to_optimize}")
+        logger.warning(f"'stage_to_optimize' cannot be set to {stage_to_optimize}")
 
-    first_stage = model_1 if stage_to_optimize == 1 else first_stage_model
-    second_stage = model_2 if stage_to_optimize == 2 else None
+    first_stage = model_1 if stage_to_optimize == FIRST_STAGE else first_stage_model
+    second_stage = model_2 if stage_to_optimize == SECOND_STAGE else None
 
     assert first_stage is not None
 
-    logging.info("Finished model training")
+    logger.info("Finished model training")
     return first_stage, second_stage
 
 
@@ -107,15 +105,13 @@ def train_first_stage(
     depvar: str,
     xgb_param: dict,
     dmatrix_1: xgb.DMatrix,
-    feature_cols_1: List[str],
+    feature_cols_1: list[str],
     n_rounds: int,
     early_stopping_rounds: int,
     dat_early_stopping: pd.DataFrame,
-    callbacks: List[xgb.callback.EarlyStopping],
+    callbacks: list[xgb.callback.EarlyStopping],
 ) -> xgb.Booster:
-    """
-    Auxiliary function to train first stage.
-    """
+    """Train the first stage model with early stopping."""
     dmatrix_evals_1 = [
         (
             xgb.DMatrix(
@@ -126,7 +122,7 @@ def train_first_stage(
             "val_rmse",
         )
     ]
-    model_1 = xgb.train(
+    return xgb.train(
         params=xgb_param,
         dtrain=dmatrix_1,
         evals=dmatrix_evals_1,
@@ -135,7 +131,6 @@ def train_first_stage(
         verbose_eval=False,
         callbacks=callbacks,
     )
-    return model_1
 
 
 def train_second_stage(
@@ -143,17 +138,15 @@ def train_second_stage(
     xgb_param: dict,
     dmatrix_1: xgb.DMatrix,
     dat: pd.DataFrame,
-    feature_cols_1: List[str],
-    feature_cols_2: List[str],
+    feature_cols_1: list[str],
+    feature_cols_2: list[str],
     n_rounds: int,
     early_stopping_rounds: int,
     dat_early_stopping: pd.DataFrame,
-    callbacks: List[xgb.callback.EarlyStopping],
+    callbacks: list[xgb.callback.EarlyStopping],
     first_stage_model: xgb.Booster,
 ) -> xgb.Booster:
-    """
-    Auxiliary function to train second stage.
-    """
+    """Train the second stage model on the residuals of the first stage."""
     # Create predictions from first stage
     prediction = first_stage_model.predict(dmatrix_1)
     residual = dat[depvar] - prediction
@@ -161,19 +154,25 @@ def train_second_stage(
 
     # Predict labels for eval set
     eval_dmatrix = xgb.DMatrix(
-        dat_early_stopping.loc[:, feature_cols_1], label=dat_early_stopping[depvar], enable_categorical=True
+        dat_early_stopping.loc[:, feature_cols_1],
+        label=dat_early_stopping[depvar],
+        enable_categorical=True,
     )
     eval_prediction = first_stage_model.predict(eval_dmatrix)
     eval_residual = dat_early_stopping[depvar] - eval_prediction
     dmatrix_evals_2 = [
         (
-            xgb.DMatrix(dat_early_stopping.loc[:, feature_cols_2], label=eval_residual, enable_categorical=True),
+            xgb.DMatrix(
+                dat_early_stopping.loc[:, feature_cols_2],
+                label=eval_residual,
+                enable_categorical=True,
+            ),
             "val_rmse",
         )
     ]
 
     # Train second model
-    model_2 = xgb.train(
+    return xgb.train(
         params=xgb_param,
         dtrain=dmatrix_2,
         evals=dmatrix_evals_2,
@@ -182,4 +181,3 @@ def train_second_stage(
         verbose_eval=False,
         callbacks=callbacks,
     )
-    return model_2

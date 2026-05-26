@@ -1,6 +1,7 @@
+"""Create string descriptions for trained models."""
+
 import copy
 import json
-from typing import List, Optional, Tuple
 
 import pandas as pd
 
@@ -10,10 +11,11 @@ from fairqmodel.model_wrapper import ModelWrapper
 def create_model_description(
     models: ModelWrapper,
     dat: pd.DataFrame,
-    lags_actual: List[int],
-    lags_avg: List[int],
-) -> Tuple[str, Optional[str]]:
-    """Creates a description of every model in the model wrapper in a string format.
+    lags_actual: list[int],
+    lags_avg: list[int],
+) -> tuple[str, str | None]:
+    """Create a description of every model in the model wrapper in a string format.
+
     If only one stage is used, the second description is None.
 
     :param models: ModelWrapper, Wrapping object containing one or two models
@@ -35,8 +37,8 @@ def create_model_description(
     return model_1_description, model_2_description
 
 
-def create_one_description(xgb_param: dict, dat: pd.DataFrame, lags_actual: List[int], lags_avg: List[int]) -> str:
-    """Creates the string description from a given set of parameters.
+def create_one_description(xgb_param: dict, dat: pd.DataFrame, lags_actual: list[int], lags_avg: list[int]) -> str:
+    """Create the string description from a given set of parameters.
 
     :param xgb_param: dict, Parameters of the model for which the description is made
     :param dat: pd.DataFrame, Contains the data on which the model was trained.
@@ -53,6 +55,4 @@ def create_one_description(xgb_param: dict, dat: pd.DataFrame, lags_actual: List
     model_description["lags"] = json.dumps(lags_actual)  # 'lags' is used as key, to be consitent with the old models
     model_description["lags_avg"] = json.dumps(lags_avg)
 
-    model_description_str = json.dumps(dict(sorted(model_description.items())))
-
-    return model_description_str
+    return json.dumps(dict(sorted(model_description.items())))

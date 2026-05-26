@@ -1,5 +1,5 @@
-"""
-Make predictions for all grid cells that contain a passive sampler for a given time frame.
+"""Make predictions for all grid cells that contain a passive sampler for a given time frame.
+
 These predictions are used to be compared with the values measured by the passive samplers
 as well as the simulated values from the chemical transport model.
 Caution: traffic predictions must be available in the database for the specified time period and grid cells.
@@ -24,9 +24,7 @@ date_max = "2022-12-31 23:00:00"
 # Retrieve model and settings
 model_type = "spatial"
 with db_connect_target() as db:
-    model_id = db.query_dataframe(
-        get_query("final_model_id"), params={"model_type": model_type, "depvar": depvar}
-    )
+    model_id = db.query_dataframe(get_query("final_model_id"), params={"model_type": model_type, "depvar": depvar})
 model_id = model_id.model_id[0]
 
 query_params = {"model_type": model_name_str(model_type), "depvar": depvar}
@@ -61,6 +59,4 @@ if write_db:
     df_for_db = df_for_db.loc[:, ["model_id", "date_time_forecast", "date_time", "x", "y", "value"]]
 
     # Send results to the DB
-    send_data_clickhouse(
-        df=df_for_db, table_name="model_predictions_passive_samplers", mode="insert"
-    )
+    send_data_clickhouse(df=df_for_db, table_name="model_predictions_passive_samplers", mode="insert")

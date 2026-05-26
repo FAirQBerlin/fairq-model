@@ -1,12 +1,12 @@
-"""
-This script trains a model with given hyper parameters and afterwards saves it to the DB.
+"""Train a model with given hyper parameters and save it to the DB.
+
 No optimization or evaluation (CV) is performed.
 """
 
-import logging
-from logging.config import dictConfig
+import sys
 
 import pandas as pd
+from loguru import logger
 
 import fairqmodel as fqm
 from fairqmodel.command_line_args import get_command_args
@@ -19,11 +19,11 @@ from fairqmodel.read_write_model_db import save_model_to_db, write_model_to_mode
 from fairqmodel.retrieve_data import retrieve_data
 from fairqmodel.time_features import time_features
 from fairqmodel.time_handling import get_current_local_time
-from logging_config.logger_config import get_logger_config
 
-dictConfig(get_logger_config())
+logger.remove()
+logger.add(sys.stdout, level="INFO")
 
-logging.info("Using fairqmodel in version: {}".format(fqm.__version__))
+logger.info(f"Using fairqmodel in version: {fqm.__version__}")
 
 # passed command args sample: ['filename.py', 'depvar=no2', 'use_lags=True','update_models_final=True']
 depvar = get_command_args("depvar") or "no2"
@@ -41,10 +41,10 @@ date_min = get_train_date_min(depvar)
 
 date_max = str(get_current_local_time().strftime("%Y-%m-%d"))
 
-logging.info(
-    "Started '2_train' for {} with: \n - use_two_stages: {}, \n - use_lags: {}, \n - time frame: [{}, {}]".format(
-        depvar, use_two_stages, use_lags, date_min, date_max
-    )
+logger.info(
+    f"Started '2_train' for {depvar} with:"
+    f"\n - use_two_stages: {use_two_stages}, \n - use_lags: {use_lags}"
+    f"\n - time frame: [{date_min}, {date_max}]"
 )
 
 # Select lag Information
@@ -100,7 +100,7 @@ model_id = save_model_to_db(
     model_2_description=model_2_description,
     execution_time=date_time_training_execution,
 )
-logging.info(f"Training of model with id {model_id} completed")
+logger.info(f"Training of model with id {model_id} completed")
 
 if update_models_final:
     # If you want to use this model for the daily predictions from now on:

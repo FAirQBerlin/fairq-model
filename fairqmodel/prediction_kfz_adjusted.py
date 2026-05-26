@@ -1,9 +1,9 @@
-import logging
-from typing import List, Optional, Tuple
+"""Perform predictions with adjusted traffic (kfz) values for stations and grid cells."""
 
 import numpy as np
 import pandas as pd
 import pytz
+from loguru import logger
 
 from fairqmodel.data_preprocessing import (
     cap_outliers,
@@ -17,6 +17,9 @@ from fairqmodel.retrieve_data import retrieve_data
 from fairqmodel.time_features import time_features
 from fairqmodel.time_handling import timestamp_to_tz_aware
 
+HOURS_PER_DAY = 24
+KFZ_PERCENTAGE_UNCHANGED = 100
+
 
 def prediction_kfz_adjusted(
     model_settings: dict,
@@ -25,10 +28,10 @@ def prediction_kfz_adjusted(
     model_id: int,
     forecast_days: int = 2,
     write_to_db: bool = False,
-    kfz_percentage: Optional[int] = None,
+    kfz_percentage: int | None = None,
     verbose: bool = True,
-) -> Tuple[List[pd.DataFrame], List[bool]]:
-    """Performs the prediction for a selected time window with different amounts of traffic.
+) -> tuple[list[pd.DataFrame], list[bool]]:
+    """Perform the prediction for a selected time window with different amounts of traffic.
 
     :param model_settings: dict, Containing the model and all of its required meta-information:
                                 - "models": Instance of the ModelWrapper,
@@ -57,7 +60,6 @@ def prediction_kfz_adjusted(
 
     :return: List[bool], Specifies the hours for which 'kfz_per_hour' was modified
     """
-
     # Access the model settings
     depvar = model_settings["depvar"]
 
@@ -67,11 +69,9 @@ def prediction_kfz_adjusted(
 
     # Select and access the data
     date_min_absolute, date_max_absolute = prepare_dates_absolute(date_min, forecast_days)
-    dat_all_days = select_data(
-        date_min_absolute, date_max_absolute, model_settings, depvar, station_id
-    )
+    dat_all_days = select_data(date_min_absolute, date_max_absolute, model_settings, depvar, station_id)
 
-    all_results: List[pd.DataFrame] = []
+    all_results: list[pd.DataFrame] = []
 
     for day_number in range(forecast_days):
         # Select time frame
@@ -81,13 +81,11 @@ def prediction_kfz_adjusted(
         # Select hours for which 'kfz_per_hour' will be modified
         hours_to_modify = mark_hours_to_modify(dat_current_day["date_time"])
 
-        if dat_current_day.shape[0] != 24:
+        if dat_current_day.shape[0] != HOURS_PER_DAY:
             hours = dat_current_day.shape[0]
             day = date_min_current.date()
-            logging.warning(
-                f"Prediction for the '{day}' was aborted, since only data for {hours} hours is available."
-            )
-            return all_results, list()
+            logger.warning(f"Prediction for the '{day}' was aborted, since only data for {hours} hours is available.")
+            return all_results, []
 
         # DataFrame for results
         dat_results = pd.DataFrame(
@@ -122,14 +120,10 @@ def prediction_kfz_adjusted(
 
         # Write predictions to DB
         if write_to_db:
-            assert kfz_percentage is None, (
-                "Results for manually selected percentage can not be written to DB."
-            )
+            assert kfz_percentage is None, "Results for manually selected percentage can not be written to DB."
 
             # Send the DataFrame to DB
-            send_data_clickhouse(
-                df=dat_results, table_name="model_predictions_thresholds", mode="insert"
-            )
+            send_data_clickhouse(df=dat_results, table_name="model_predictions_thresholds", mode="insert")
 
     return all_results, hours_to_modify.tolist()
 
@@ -137,7 +131,8 @@ def prediction_kfz_adjusted(
 def pre_fill_lags(
     dat: pd.DataFrame, depvar: str, model_settings: dict, date_min_absolute: pd.Timestamp
 ) -> pd.DataFrame:
-    """The kfz_adjusted_prediction is performed for several days into the future.
+    """Perform the kfz_adjusted_prediction for several days into the future.
+
     The kfz reductions however are evaluated on a daily basis.
     If e.g. the prediction is made for the upcoming two days, some lags of the second day are
     build from the first day. Due to the per-day calculation, these lags usually wouldn't be available.
@@ -151,7 +146,6 @@ def pre_fill_lags(
 
     :return: pd.DataFrame, Same DataFrame as input, but missing lags have been added
     """
-
     dat.reset_index(drop=True, inplace=True)
 
     observations_backup = dat.loc[:, depvar].copy(deep=True)
@@ -163,9 +157,7 @@ def pre_fill_lags(
     dat.loc[future_idx, depvar] = None
 
     # Build time features and fix dtypes
-    dat = time_features(
-        dat, depvar=depvar, lags_actual=model_settings["lags"], lags_avg=model_settings["lags_avg"]
-    )
+    dat = time_features(dat, depvar=depvar, lags_actual=model_settings["lags"], lags_avg=model_settings["lags_avg"])
     dat = fix_column_types(
         dat,
         categorical_feature_cols=model_settings["categorical_feature_cols"],
@@ -182,21 +174,15 @@ def pre_fill_lags(
 
     # Fill depvar column after 'date_min' with predicted values
     dat[depvar] = dat[depvar].astype(float)
-    dat.loc[future_idx, depvar] = forecast["pred"].values
+    dat.loc[future_idx, depvar] = forecast["pred"].to_numpy()
 
     # Update the lags, now including all future time steps
-    dat = time_features(
-        dat, depvar=depvar, lags_actual=model_settings["lags"], lags_avg=model_settings["lags_avg"]
-    )
+    dat = time_features(dat, depvar=depvar, lags_actual=model_settings["lags"], lags_avg=model_settings["lags_avg"])
 
     # Change the temporarily overwritten observation values back to their original value
     dat.loc[:, depvar] = observations_backup.astype(float)
 
-    dat = fix_column_types(
-        dat, model_settings["categorical_feature_cols"], model_settings["metric_feature_cols"]
-    )
-
-    return dat
+    return fix_column_types(dat, model_settings["categorical_feature_cols"], model_settings["metric_feature_cols"])
 
 
 def make_predictions_with_adjusted_kfz_percentage(
@@ -206,9 +192,8 @@ def make_predictions_with_adjusted_kfz_percentage(
     date_min_current,
     date_max_current,
     model_settings: dict,
-) -> Tuple[pd.DataFrame, float]:
-    """Performs the prediction with an adjusted amount of traffic."""
-
+) -> tuple[pd.DataFrame, float]:
+    """Perform the prediction with an adjusted amount of traffic."""
     # Adjust the 'kfz_per_hour' by the selected amount
     dat_adjusted.loc[hours_to_modify, "kfz_per_hour"] = (
         dat_adjusted.loc[hours_to_modify, "kfz_per_hour"] * percentage / 100
@@ -226,7 +211,7 @@ def make_predictions_with_adjusted_kfz_percentage(
 def make_forecast(
     date_min: pd.Timestamp, date_max: pd.Timestamp, dat: pd.DataFrame, model_settings: dict
 ) -> pd.DataFrame:
-    """Makes the forecast for the provided data and time window.
+    """Make the forecast for the provided data and time window.
 
     :param date_min: pd.Timestamp, Minimal date of the forecast, in Berlin Time
     :param date_max: pd.Timestamp, Maximal date of the forecast, in Berlin Time
@@ -235,7 +220,6 @@ def make_forecast(
 
     :return: pd.DataFrame
     """
-
     data_dict = {
         "ts_fold_id": 1,
         "ts_fold_max_train_date": date_min,
@@ -248,7 +232,6 @@ def make_forecast(
     dat_prediction, _ = make_lag_adjusted_prediction(
         data_dict,
         models=model_settings["models"],
-        feature_cols=model_settings["feature_cols"],
         depvar=model_settings["depvar"],
         lags_actual=model_settings["lags"],
         lags_avg=model_settings["lags_avg"],
@@ -256,25 +239,19 @@ def make_forecast(
     )
 
     # Reorder columns
-    dat_prediction = dat_prediction[
-        ["date_time_forecast", "date_time", "station_id", model_settings["depvar"], "pred"]
-    ]
-
-    return dat_prediction
+    return dat_prediction[["date_time_forecast", "date_time", "station_id", model_settings["depvar"], "pred"]]
 
 
 def adjust_kfz_per_hour_grid(dat: pd.DataFrame, percentage: int = 100) -> pd.DataFrame:
-    """
-    adjust the kfz per hour for grid predictions
+    """Adjust the kfz per hour for grid predictions.
 
     :param dat: pd.DataFrame with a column "kfz_per_hour"
     :param percentage: int. percentage to adjust the kfz_per_hour between 5am and 9pm. 100 means no adjustment.
 
     :return copy of dat (input pd.DataFrame) with the adjusted column kfz_per_hour
     """
-
-    if percentage != 100:
-        logging.info(f"Adjusting kfz_per_hour with percentage = {percentage}\n")
+    if percentage != KFZ_PERCENTAGE_UNCHANGED:
+        logger.info(f"Adjusting kfz_per_hour with percentage = {percentage}\n")
 
     dat_adjusted = dat.copy()
     hours_to_modify = mark_hours_to_modify(dat_adjusted["date_time"])
@@ -288,8 +265,8 @@ def adjust_kfz_per_hour_grid(dat: pd.DataFrame, percentage: int = 100) -> pd.Dat
 
 
 def mark_hours_to_modify(date_time_column: pd.Series) -> pd.Series:
-    """
-    Mark hours for which the traffic may be modified
+    """Mark hours for which the traffic may be modified.
+
     :param date_time_column: Date time column of the data for which the prediction will be performed
     :return: Series of Booleans, with the same length as the input. Each Bool signals if the corresponding hour is
              eligible for traffic reduction.
@@ -302,7 +279,8 @@ def mark_hours_to_modify(date_time_column: pd.Series) -> pd.Series:
 
 
 def check_date_min(date_min: pd.Timestamp) -> pd.Timestamp:
-    """Checks if the selected 'date_min' is available.
+    """Check if the selected 'date_min' is available.
+
     If yes it remains unchanged, if no, the most recent available date is returned.
 
     :param date_min: pd.Timestamp, Selected 'date_min' Berlin time
@@ -311,23 +289,21 @@ def check_date_min(date_min: pd.Timestamp) -> pd.Timestamp:
     """
     with db_connect_source() as db:
         most_recent_observation_date = pd.Timestamp(
-            db.query_dataframe(get_query("most_recent_observation")).values[0][0]
+            db.query_dataframe(get_query("most_recent_observation")).to_numpy()[0][0]
         ).tz_convert(tz="Europe/Berlin")
 
     if date_min - pd.Timedelta(1, "hours") > most_recent_observation_date:
-        logging.warning(f"Forecast for selected min_date {date_min.date()} can't be performed")
-        logging.info(
-            "Forecast is performed with most recent available min_date of {}".format(
-                most_recent_observation_date.date()
-            )
+        logger.warning(f"Forecast for selected min_date {date_min.date()} can't be performed")
+        logger.info(
+            f"Forecast is performed with most recent available min_date of {most_recent_observation_date.date()}"
         )
         date_min = most_recent_observation_date + pd.Timedelta(1, "hours")
 
     return date_min
 
 
-def prepare_dates_absolute(date_min: str, forecast_days: int) -> Tuple[pd.Timestamp, pd.Timestamp]:
-    """Selects valid dates according to the provided parameters
+def prepare_dates_absolute(date_min: str, forecast_days: int) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """Select valid dates according to the provided parameters.
 
     :param date_min: str, Earliest date for which the predictions are performed, Berlin Time
     :param forecast_days: int, Specifies how many days into the future the predictions are made
@@ -344,10 +320,9 @@ def prepare_dates_absolute(date_min: str, forecast_days: int) -> Tuple[pd.Timest
     return date_min_absolute, date_max_absolute
 
 
-def prepare_dates_current(
-    date_min_absolute: pd.Timestamp, day_number: int
-) -> Tuple[pd.Timestamp, pd.Timestamp]:
-    """Selects the current date relatively to the given absolute date.
+def prepare_dates_current(date_min_absolute: pd.Timestamp, day_number: int) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """Select the current date relative to the given absolute date.
+
     'date_min_absolute' is in Berlin Time and consequently both returned dates are in Berlin Time too.
 
     :param date_min_absolute: pd.Timestamp, Earliest date of the entire prediction window, Berlin Time
@@ -368,7 +343,7 @@ def select_data(
     depvar: str,
     station_id: str,
 ) -> pd.DataFrame:
-    """Selects the data for the specified range and builds the required lags.
+    """Select the data for the specified range and build the required lags.
 
     :param date_min_absolute: pd.Timestamp, Earliest date for which the predictions are performed, in Berlin Time
     :param date_max_absolute: pd.Timestamp, Latest date up to which the predictions are performed, in Berlin Time
@@ -408,7 +383,7 @@ def select_day(
     date_max_current: pd.Timestamp,
     verbose: bool,
 ) -> pd.DataFrame:
-    """Selects a single day from the larger DataFrame
+    """Select a single day from the larger DataFrame.
 
     :param dat_all_days: pd.DataFame, Containing the data of all days for which the prediction is made
     :param date_min_current: pd.Timestamp, Start of the selected day, in Berlin Time
@@ -418,7 +393,7 @@ def select_day(
     :return: pd.DataFrame, Containing the data of the selected day
     """
     if verbose:
-        logging.info(f"Now predicting day {date_min_current.date()}")
+        logger.info(f"Now predicting day {date_min_current.date()}")
 
     # Select relevant data
     dat_current_day = dat_all_days.copy(deep=True)
@@ -426,10 +401,8 @@ def select_day(
     # Select time points from 1 am from the current day until 0 am of the next day
     # Example: For the '2022-10-09' the time points ['2022-10-09 01:00:00', '2022-10-10 00:00:00']
     dat_current_day.query(
-        "date_time > '{}' and date_time <= '{}'".format(
-            timestamp_to_tz_aware(date_min_current),
-            timestamp_to_tz_aware(date_max_current),
-        ),
+        f"date_time > '{timestamp_to_tz_aware(date_min_current)}'"
+        f" and date_time <= '{timestamp_to_tz_aware(date_max_current)}'",
         inplace=True,
     )
     dat_current_day.reset_index(drop=True, inplace=True)

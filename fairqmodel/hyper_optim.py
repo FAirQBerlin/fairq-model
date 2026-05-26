@@ -1,8 +1,8 @@
-import logging
-from logging.config import dictConfig
+"""Hyper-parameter optimization using Optuna for XGBoost models."""
 
 import numpy as np
 import optuna
+from loguru import logger
 from optuna.samplers import TPESampler
 
 from fairqmodel.build_splits import prepare_folded_input, slice_data_frame
@@ -15,9 +15,8 @@ from fairqmodel.prediction_lag_adjusted import make_lag_adjusted_prediction
 from fairqmodel.prediction_t_plus_k import get_model_settings
 from fairqmodel.read_write_model_aux_functions import model_name_str
 from fairqmodel.train_model_in_hpo import train_hpo
-from logging_config.logger_config import get_logger_config
 
-dictConfig(get_logger_config())
+SECOND_STAGE = 2
 
 
 def hyper_opt(
@@ -43,7 +42,7 @@ def hyper_opt(
     optimize_stage=None,
     first_stage_model_id=None,
 ):
-    """Function to tune hyper-parameters using optuna.
+    """Tune hyper-parameters using Optuna.
 
     Parameters
     ----------
@@ -57,6 +56,8 @@ def hyper_opt(
         Contains lags for avg feature
     dat: pd.DataFrame
         Data for training, testing and evaluation
+    feature_cols: list[str]
+        List of feature column names to use in training.
     num_boost_round : int
         Number of boosting iterations.
     early_stopping_rounds: int
@@ -74,8 +75,14 @@ def hyper_opt(
         Name of the hyperparameter study.
     silence : bool
         Controls the verbosity of the trail, i.e., user can silence the outputs of the trail.
+    n_cores : int
+        Number of CPU cores to use in training.
+    seed : int
+        Random seed for reproducibility.
     t_plus_k_params: Optional[dict]
         Parameters for the t+k CV
+    storage : bool
+        If True, results are stored in a local SQLite database.
     use_lags: bool
         specifies if lags are included in optimization
     optimize_lags: bool
@@ -87,16 +94,14 @@ def hyper_opt(
     first_stage_model_id: Optional[int],
         Specifies the model to use as a first stage, when optimizing second stage.
         Otherwise this variable has no effect.
+
     Returns
     -------
     opt_params : Dict() with optimal parameters.
-    """
 
-    if storage:
-        # TODO: set up real db instead of creating local optuna_hpo_studies.db file on the fly
-        storage_name = "sqlite:///optuna_hpo_studies.db"
-    else:
-        storage_name = None
+    """
+    # TODO: set up real db instead of creating local optuna_hpo_studies.db file on the fly
+    storage_name = "sqlite:///optuna_hpo_studies.db" if storage else None
 
     def objective(trial):
         hyper_params = {
@@ -140,7 +145,7 @@ def hyper_opt(
         }
         if optimize_stage == 1:
             hyper_params["monotone_constraints"] = {"kfz_per_hour": 1}
-            print(hyper_params)
+            logger.info(f"hyper_params: {hyper_params}")
 
         if use_lags:
             if optimize_lags:
@@ -204,9 +209,9 @@ def hyper_opt(
         timeout=timeout,
     )
 
-    logging.info("Hyper-Parameter Optimization successfully finished.")
-    logging.info(f"Number of finished trials: {len(study.trials)}")
-    logging.info("Best trial:")
+    logger.info("Hyper-Parameter Optimization successfully finished.")
+    logger.info(f"Number of finished trials: {len(study.trials)}")
+    logger.info("Best trial:")
     opt_param = study.best_trial
 
     # Add optimal stopping round
@@ -215,10 +220,10 @@ def hyper_opt(
     ]
     opt_param.params["opt_rounds"] = int(opt_param.params["opt_rounds"])
 
-    logging.info("\t\t Value: {}".format(opt_param.value))
-    logging.info("\t\t Params: ")
+    logger.info(f"\t\t Value: {opt_param.value}")
+    logger.info("\t\t Params: ")
     for key, value in opt_param.params.items():
-        logging.info("\t\t {}: {}".format(key, value))
+        logger.info(f"\t\t {key}: {value}")
 
     return {"study": study, "opt_param": opt_param.params}
 
@@ -239,6 +244,7 @@ def get_best_score(
     optimize_stage,
     first_stage_model_id,
 ):
+    """Compute the best cross-validation score for the given trial parameters."""
     # remove all not selected lags from feature cols
     feature_cols = [feature for feature in feature_cols if "lag" not in feature]
 
@@ -283,6 +289,7 @@ def manual_cv_t_plus_k(
     optimize_stage,
     first_stage_model_id,
 ):
+    """Run manual time-series cross-validation with t+k prediction windows."""
     time_cv_folds = prepare_folded_input(
         dat,
         n_cv_windows=t_plus_k_params["n_cv_windows"],
@@ -299,7 +306,7 @@ def manual_cv_t_plus_k(
     features_stage_1, features_stage_2 = assign_features_to_stage(use_two_stages, feature_cols)
 
     loop_idx = 0
-    for fold in reversed(time_cv_folds):
+    for loop_idx, fold in enumerate(reversed(time_cv_folds)):
         fold["test"] = slice_data_frame(
             dat,
             lower_bound=fold["test_window_cut_min_modified"],
@@ -320,8 +327,8 @@ def manual_cv_t_plus_k(
 
         max_test_date = fold["ts_fold_max_test_date"].strftime("%Y-%m-%d %H:%M:%S")
 
-        logging.info(f"Fold {loop_idx+1}/{len(time_cv_folds)}, train_model: {train_model}")
-        logging.info(f"max_train_date: {max_train_date}, max_test_date: {max_test_date}")
+        logger.info(f"Fold {loop_idx + 1}/{len(time_cv_folds)}, train_model: {train_model}")
+        logger.info(f"max_train_date: {max_train_date}, max_test_date: {max_test_date}")
 
         # Get the test data
         dat_test = fold["test"]
@@ -332,8 +339,8 @@ def manual_cv_t_plus_k(
 
         if train_model:
             # Load first model if second stage is optimized
-            if optimize_stage == 2:
-                logging.info("Load first stage")
+            if optimize_stage == SECOND_STAGE:
+                logger.info("Load first stage")
                 query_params = {"model_type": model_name_str("all"), "depvar": depvar}
                 with db_connect_target() as db:
                     available_models = db.query_dataframe(get_query("available_models"), params=query_params)
@@ -364,21 +371,17 @@ def manual_cv_t_plus_k(
             )
 
         # Evaluate the model
-        _, rmse = make_lag_adjusted_prediction(
-            fold, models, feature_cols, depvar, lags_actual, lags_avg, calc_metrics=True
-        )
+        _, rmse = make_lag_adjusted_prediction(fold, models, depvar, lags_actual, lags_avg, calc_metrics=True)
 
         prediction_metrics.append(rmse)
 
         best_it = models.model_1.best_iteration if optimize_stage == 1 else models.model_2.best_iteration
         best_iterations.append(best_it + 1)
 
-        loop_idx += 1
-
     avg_rmse = np.mean(prediction_metrics)
     best_iteration = int(np.quantile(best_iterations, 0.75))
 
-    logging.info(f"Finish iteration with avg_rmse: {avg_rmse=:.3f} and best_iteration: {best_iteration}\n\n")
+    logger.info(f"Finish iteration with avg_rmse: {avg_rmse=:.3f} and best_iteration: {best_iteration}\n\n")
 
     # NOTE: Using the mean over the best iterations is the best approximation to the true value
     # as the values needed to calculate the exact best iteration are not available.
@@ -386,6 +389,7 @@ def manual_cv_t_plus_k(
 
 
 def split_train_data(dat_all, time_delta):
+    """Split training data into train and validation sets based on a time delta."""
     max_test_date = dat_all.date_time.max()
     min_test_date = max_test_date - time_delta
 

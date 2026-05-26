@@ -1,10 +1,11 @@
-from typing import List, Optional, Tuple
+"""Assign model features to the appropriate model stages."""
 
 from fairqmodel.model_parameters import get_features_first_stage
 
 
-def assign_features_to_stage(use_two_stages: bool, feature_cols: List[str]) -> Tuple[List[str], Optional[List[str]]]:
-    """Assigns the features  to the stages of the model.
+def assign_features_to_stage(use_two_stages: bool, feature_cols: list[str]) -> tuple[list[str], list[str] | None]:
+    """Assign the features to the stages of the model.
+
     If a one-stage model is used, all features are assigned to the first stage.
     If a two-stage model is used, a specified subset is used for the fist stage
     and all features are used in the second stage.
@@ -14,7 +15,6 @@ def assign_features_to_stage(use_two_stages: bool, feature_cols: List[str]) -> T
 
     :return: Tuple[List[str], Optional[List[str]]]
     """
-
     if not use_two_stages:
         features_stage_1 = feature_cols
         features_stage_2 = None

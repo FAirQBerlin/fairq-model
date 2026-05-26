@@ -1,28 +1,27 @@
-import logging
-from logging.config import dictConfig
-from typing import List, Optional, Tuple
+"""Wrap XGBoost models to support flexible single- or two-stage prediction."""
 
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+from loguru import logger
 
 from fairqmodel.model_parameters import get_xgboost_param
-from logging_config.logger_config import get_logger_config
-
-dictConfig(get_logger_config())
 
 
 class ModelWrapper:
+    """Wrap one or two XGBoost models for flexible single- or two-stage prediction."""
+
     def __init__(
         self,
         depvar: str,
-        model_1: Optional[xgb.Booster] = None,
-        model_2: Optional[xgb.Booster] = None,
-        feature_cols_1: Optional[List[str]] = None,
-        feature_cols_2: Optional[List[str]] = None,
+        model_1: xgb.Booster | None = None,
+        model_2: xgb.Booster | None = None,
+        feature_cols_1: list[str] | None = None,
+        feature_cols_2: list[str] | None = None,
         dev: bool = False,
     ) -> None:
-        """Wrapper for xgb models to allow for a flexible use of either one or two models.
+        """Wrap xgb models to allow for flexible use of either one or two models.
+
         An instance of the class can be created in one of two ways:
             1) Pre-trained model(s) is(are) are provided.
             2) Feature variables are provided on which new models can be trained.
@@ -36,7 +35,6 @@ class ModelWrapper:
 
         :return: None
         """
-
         # Assert general properties
         self._assert_properties(model_1, model_2, feature_cols_1, feature_cols_2)
 
@@ -57,18 +55,17 @@ class ModelWrapper:
         # Either set feature_columns
         if self.is_trained:
             assert self.model_1 is not None  # for mypy checking
-            self.feature_cols_1 = self.model_1.feature_names
+            self.feature_cols_1 = list(self.model_1.feature_names) if self.model_1.feature_names else None
             if self.use_two_stages:
                 assert self.model_2 is not None
-                self.feature_cols_2 = self.model_2.feature_names
+                self.feature_cols_2 = list(self.model_2.feature_names) if self.model_2.feature_names else None
         # Or initialize model parameters from .json
         else:
             self._retrieve_xgb_params()
 
-        logging.info(
-            "Model initialized for {} with: is_trained = {}, use_two_stages = {}".format(
-                self.depvar, self.is_trained, self.use_two_stages
-            )
+        logger.info(
+            f"Model initialized for {self.depvar} with:"
+            f" is_trained = {self.is_trained}, use_two_stages = {self.use_two_stages}"
         )
 
     def train(self, dat: pd.DataFrame) -> None:
@@ -79,9 +76,9 @@ class ModelWrapper:
         :return: None
         """
         if self.is_trained:
-            logging.warning("Train function was called, but model is already trained")
+            logger.warning("Train function was called, but model is already trained")
             return
-        logging.info("Start model training")
+        logger.info("Start model training")
 
         weights = np.exp(dat[self.depvar].astype(float) / 40) if self.use_sample_weights else 1
         dat["sample_weight"] = weights
@@ -101,10 +98,11 @@ class ModelWrapper:
 
         # Update training status
         self.is_trained = True
-        logging.info("Model was trained successfully")
+        logger.info("Model was trained successfully")
 
-    def predict(self, dat: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
-        """Performs the prediction with all available stages.
+    def predict(self, dat: pd.DataFrame) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
+        """Perform the prediction with all available stages.
+
         If two stages are used, the second stage predicts the residual of the first stage,
         where residual = observation - first_prediction.
 
@@ -112,7 +110,6 @@ class ModelWrapper:
 
         :return: pd.DataFrame, Predictions, estimated with the available models.
         """
-
         assert self.is_trained, "A model must be either loaded or trained before predictions can be performed."
 
         assert self.model_1 is not None
@@ -142,15 +139,15 @@ class ModelWrapper:
 
         :return: xgb.Booster, The trained first stage
         """
-        model_1 = xgb.train(
+        return xgb.train(
             params=self.xgb_param_1,
             dtrain=dmatrix_1,
             num_boost_round=self.n_rounds_1,
         )
-        return model_1
 
     def _train_model_2(self, dat: pd.DataFrame, dmatrix_1: xgb.DMatrix) -> xgb.Booster:
-        """Auxiliary function performing the model training of the second stage.
+        """Train the second stage model on residuals of the first stage.
+
         The second stage predicts the residuals of the first stage where
         residual = observation - first_prediction.
 
@@ -170,21 +167,20 @@ class ModelWrapper:
             weight=dat["sample_weight"],
         )
 
-        model_2 = xgb.train(
+        return xgb.train(
             params=self.xgb_param_2,
             dtrain=dmatrix_2,
             num_boost_round=self.n_rounds_2,
         )
-        return model_2
 
     @staticmethod
     def _assert_properties(
-        model_1: Optional[xgb.Booster] = None,
-        model_2: Optional[xgb.Booster] = None,
-        feature_cols_1: Optional[List[str]] = None,
-        feature_cols_2: Optional[List[str]] = None,
+        model_1: xgb.Booster | None = None,
+        model_2: xgb.Booster | None = None,
+        feature_cols_1: list[str] | None = None,
+        feature_cols_2: list[str] | None = None,
     ) -> None:
-        """Asserts that given parameters are valid combinations.
+        """Assert that given parameters are valid combinations.
 
         :param model_1: Optional[xgb.Booster], If provided, the first (pre-trained) model
         :param model_2: Optional[xgb.Booster], If provided, the second (pre-trained) model
@@ -200,21 +196,21 @@ class ModelWrapper:
         feat_2_not_none = feature_cols_2 is not None
 
         # Assert that only valid combinations of models and feature_cols are provided
-        assert not (
-            m1_not_none and feat_1_not_none
-        ), "Invalid combination of parameters: Both model_1 and feature_cols_1 are provided."
-        assert (
-            m1_not_none or feat_1_not_none
-        ), "Invalid combination of parameters: Neither model_1 nor feature_cols_1 is provided."
-        assert not (
-            m1_not_none and feat_2_not_none
-        ), "Invalid combination of parameters: model_1 and feature_cols_2 are provided"
-        assert not (
-            m2_not_none and feat_1_not_none
-        ), "Invalid combination of parameters: model_2 and feature_cols_1 are provided"
+        assert not (m1_not_none and feat_1_not_none), (
+            "Invalid combination of parameters: Both model_1 and feature_cols_1 are provided."
+        )
+        assert m1_not_none or feat_1_not_none, (
+            "Invalid combination of parameters: Neither model_1 nor feature_cols_1 is provided."
+        )
+        assert not (m1_not_none and feat_2_not_none), (
+            "Invalid combination of parameters: model_1 and feature_cols_2 are provided"
+        )
+        assert not (m2_not_none and feat_1_not_none), (
+            "Invalid combination of parameters: model_2 and feature_cols_1 are provided"
+        )
 
     def _retrieve_xgb_params(self) -> None:
-        """Accesses model parameters from a .json file. Required for training new models.
+        """Access model parameters from a .json file. Required for training new models.
 
         :return: None
         """

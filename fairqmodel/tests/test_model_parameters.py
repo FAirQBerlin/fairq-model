@@ -1,12 +1,12 @@
-from pytest import raises
+"""Unit tests for model_parameters module."""
+
+import pytest
 
 from fairqmodel.model_parameters import get_variables, get_xgboost_param, load_json
 
 
 def test_get_xgboost_param_output():
-    """
-    Checks output for correct format, type and keywords.
-    """
+    """Check output for correct format, type and keywords."""
     # arrange
     depvar = "no2"
     target_keys = {"max_depth", "eta", "objective", "nthread", "eval_metric", "seed"}
@@ -22,22 +22,18 @@ def test_get_xgboost_param_output():
 
 
 def test_get_variables_input():
-    """
-    Checks input for format and depvar.
-    """
+    """Check input for format and depvar."""
     # arrange
     depvar = "im_not_a_depvar"
     lags = [3, 1, 4]
 
     # act/assert
-    with raises(ValueError):
+    with pytest.raises(ValueError, match="depvar"):
         get_variables(depvar, lags)
 
 
 def test_get_variables_output():
-    """
-    Checks output for correct format, type and keywords.
-    """
+    """Check output for correct format, type and keywords."""
     # arrange
     depvar = "no2"
     lags = [3, 1, 4]
@@ -55,21 +51,17 @@ def test_get_variables_output():
 
 
 def test_get_xgboost_param_error():
-    """
-    Checks for correct depvar.
-    """
+    """Check for correct depvar."""
     # arrange
     depvar = "pm42"
 
     # act/assert
-    with raises(KeyError):
+    with pytest.raises(KeyError):
         get_xgboost_param(depvar)
 
 
 def test_load_json_path():
-    """
-    Test that function checks for valid selector.
-    """
+    """Test that function checks for valid selector."""
     # arrange
 
     # valid parameters
@@ -80,14 +72,12 @@ def test_load_json_path():
     selector_iv = "not_a_selector"
 
     # select/assert
-    with raises(KeyError, match="Used invalid key to query the file: not_a_selector"):
+    with pytest.raises(KeyError, match="Used invalid key to query the file: not_a_selector"):
         load_json(target_dir_v, target_filename_v, selector_iv)
 
 
 def test_load_json_output():
-    """
-    Test that function returns the correct type.
-    """
+    """Test that function returns the correct type."""
     # arrange
 
     # valid paramters
@@ -103,9 +93,7 @@ def test_load_json_output():
 
 
 def test_dev_mode():
-    """
-    Checks if DEV mode uses fewer variables than standard mode.
-    """
+    """Check if DEV mode uses fewer variables than standard mode."""
     # arrange
     depvar = "no2"
     lags = [3, 1, 4]

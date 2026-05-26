@@ -1,15 +1,19 @@
-from typing import Optional
+"""Compute the maximal date_time for model predictions."""
 
 import pandas as pd
 import tzlocal
 
 from fairqmodel.time_handling import get_current_local_time
 
+MIDDAY_HOUR = 12
+FLOOR_DAYS_AFTERNOON = 5
+FLOOR_DAYS_MORNING = 4
+
 
 def get_max_date_time(
-    date_now: Optional[pd.Timestamp] = None,
+    date_now: pd.Timestamp | None = None,
 ) -> pd.Timestamp:
-    """Gets the maximal 'date_time' for a prediction
+    """Get the maximal 'date_time' for a prediction.
 
     :date_now: pd.Timestamp, Current time stamp floored to the hour
 
@@ -28,9 +32,7 @@ def get_max_date_time(
     # i.e. If date_now is already in Berlin Time, the conversion has no effect
     date_now_berlin = date_now.tz_convert(tz="Europe/Berlin")
 
-    floor_days = 5 if date_now.hour >= 12 else 4
+    floor_days = FLOOR_DAYS_AFTERNOON if date_now.hour >= MIDDAY_HOUR else FLOOR_DAYS_MORNING
 
     # Select max_date s.t. it is the end of the third (or fourth) day from now (0 o'clock the next day)
-    max_date_time_berlin = (date_now_berlin + pd.Timedelta(floor_days, "day")).replace(hour=0)
-
-    return max_date_time_berlin
+    return (date_now_berlin + pd.Timedelta(floor_days, "day")).replace(hour=0)

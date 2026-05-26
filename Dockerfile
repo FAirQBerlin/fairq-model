@@ -7,8 +7,9 @@ ARG DEV=false
 
 ENV TZ=Europe/Berlin \
     POETRY_NO_INTERACTION=1 \
-    POETRY_VIRTUALENVS_IN_PROJECT=true \
-    POETRY_VIRTUALENVS_CREATE=true \
+    POETRY_NO_ANSI=1 \
+    POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_VIRTUALENVS_IN_PROJECT=false \
     POETRY_CACHE_DIR=/tmp/poetry_cache
 
 # system dependencies
@@ -25,7 +26,7 @@ RUN apt-get update \
 
 ENV PATH="$PATH:/root/.local/bin"
 
-# Copy only requierments to cache in layer
+# Copy only requirements to cache in layer
 WORKDIR /usr/src/app
 
 # Copy & Update CA certificates

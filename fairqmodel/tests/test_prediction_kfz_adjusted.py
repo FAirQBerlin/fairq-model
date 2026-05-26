@@ -1,5 +1,7 @@
+"""Unit and integration tests for prediction_kfz_adjusted module."""
+
 import pandas as pd
-from pytest import fixture
+import pytest
 
 from fairqmodel.prediction_kfz_adjusted import (
     adjust_kfz_per_hour_grid,
@@ -9,8 +11,9 @@ from fairqmodel.prediction_kfz_adjusted import (
 from fairqmodel.tests.helpers import arrange_for_lag_pred_tests
 
 
-@fixture
+@pytest.fixture
 def input_df_times():
+    """Build a DataFrame with example datetimes covering daylight saving transitions."""
     example_times = [
         "2022-01-01 03:00:00",  # 4 am in Berlin (winter time) -> traffic may not be reduced
         "2022-01-01 04:00:00",  # 5 am in Berlin (winter time) -> traffic may be reduced
@@ -34,12 +37,14 @@ def input_df_times():
 
 
 def test_mark_hours_to_modify(input_df_times):
+    """Check that only hours between 5am and 9pm Berlin time are marked for traffic modification."""
     expected = [False, True, True, False] * 2 + [False] * 6
     res = mark_hours_to_modify(input_df_times.date_time)
     assert res.tolist() == expected
 
 
 def test_adjust_kfz_per_hour_grid():
+    """Check that kfz_per_hour is adjusted correctly for eligible hours."""
     # Arrange
     df = pd.DataFrame(
         {
@@ -71,9 +76,9 @@ def test_adjust_kfz_per_hour_grid():
     assert res.equals(expected)
 
 
+@pytest.mark.tests_on_real_clickhouse
 def test_pre_fill_lags():
     """Test the output of the pre_fill_lags() function."""
-
     # Arrange
     dat, model_settings, date_min, changed_columns = arrange_for_lag_pred_tests()
     depvar = model_settings["depvar"]
@@ -105,18 +110,16 @@ def test_pre_fill_lags():
     # Check consistency within lags, i.e. lag_1 is the same as lag_2 shifted by one
     # Note: The first entry is always NaN and the last one (or two) values of the shifted columns are NaN as well
     #       -> Only compare the not NaN rows
-    assert all(
-        dat_res_changed["pm25_lag1"][1:-1] == dat_res_changed["pm25_lag2"].shift(periods=-1)[1:-1]
-    ), "Inconsistency between lag1 and lag2"
-    assert all(
-        dat_res_changed["pm25_lag1"][1:-2] == dat_res_changed["pm25_lag3"].shift(periods=-2)[1:-2]
-    ), "Inconsistency between lag1 and lag3"
+    assert all(dat_res_changed["pm25_lag1"][1:-1] == dat_res_changed["pm25_lag2"].shift(periods=-1)[1:-1]), (
+        "Inconsistency between lag1 and lag2"
+    )
+    assert all(dat_res_changed["pm25_lag1"][1:-2] == dat_res_changed["pm25_lag3"].shift(periods=-2)[1:-2]), (
+        "Inconsistency between lag1 and lag3"
+    )
 
     # Check if the avg_lag was built correctly, again ignoring the leading NaN
     assert all(
-        dat_res_changed.loc[
-            :, ["pm25_lag1", "pm25_lag2", "pm25_lag3", "pm25_lag4", "pm25_lag5"]
-        ].mean(axis=1)[1:]
+        dat_res_changed.loc[:, ["pm25_lag1", "pm25_lag2", "pm25_lag3", "pm25_lag4", "pm25_lag5"]].mean(axis=1)[1:]
         == dat_res_changed["lag_avg_(1, 2, 3, 4, 5)"][1:]
     ), "Inconsistency between lags and lag_avg"
 
@@ -135,14 +138,10 @@ def test_pre_fill_lags():
         date_min_lag = date_min + pd.Timedelta(lag, "hours")
         idx = dat_res_constant["date_time"] > date_min_lag
         assert not any(
-            dat_res_constant.loc[idx, depvar]
-            == dat_res_changed.loc[idx, f"pm25_lag{lag}"].shift(periods=-lag)
+            dat_res_constant.loc[idx, depvar] == dat_res_changed.loc[idx, f"pm25_lag{lag}"].shift(periods=-lag)
         ), "Real lags are used at a point, where they shouldn't accessible"
 
     # Check after 'date_min' there are no None values in the lag vars
     assert all(dat_res_changed.loc[dat_res_constant["date_time"] > date_min, :].notna()), (
         "Lag values have not been filled completely"
     )
-
-
-# __file__ = "fairqmodel/tests/test_prediction_kfz_adjusted.py"

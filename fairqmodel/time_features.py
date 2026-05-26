@@ -1,4 +1,4 @@
-from typing import List
+"""Build time lag features for model training and prediction."""
 
 import pandas as pd
 
@@ -6,8 +6,8 @@ import pandas as pd
 def time_features(
     dat: pd.DataFrame,
     depvar: str,
-    lags_actual: List[int] = [],
-    lags_avg: List[int] = [],
+    lags_actual: list[int] | None = None,
+    lags_avg: list[int] | None = None,
 ) -> pd.DataFrame:
     """Add time features to DataFrame.
 
@@ -18,16 +18,18 @@ def time_features(
 
     :return: DataFrame with time features
     """
-
-    dat = time_lags(dat, depvar, lags_actual, lags_avg)
-    return dat
+    if lags_actual is None:
+        lags_actual = []
+    if lags_avg is None:
+        lags_avg = []
+    return time_lags(dat, depvar, lags_actual, lags_avg)
 
 
 def time_lags(
     dat: pd.DataFrame,
     depvar: str,
-    lags_actual: List[int] = [],
-    lags_avg: List[int] = [],
+    lags_actual: list[int] | None = None,
+    lags_avg: list[int] | None = None,
 ) -> pd.DataFrame:
     """Add time lags for all stations to DataFrame.
 
@@ -38,14 +40,15 @@ def time_lags(
 
     :return: DataFrame with time lags
     """
-
-    lags_all = sorted(list(set(lags_actual + lags_avg)))
+    if lags_actual is None:
+        lags_actual = []
+    if lags_avg is None:
+        lags_avg = []
+    lags_all = sorted(set(lags_actual + lags_avg))
 
     if len(lags_all) > 0:
         # Create the columns for lags of both types (i.e. lags_actual and lags_avg)
-        dat = dat.groupby("station_id").apply(
-            lambda x: get_station_lags(x, depvar, lags_all), include_groups=False
-        )
+        dat = dat.groupby("station_id").apply(lambda x: get_station_lags(x, depvar, lags_all), include_groups=False)
         dat = dat.copy()
         dat["station_id"] = dat.index.get_level_values(0)
         cols = dat.columns.tolist()
@@ -70,7 +73,7 @@ def time_lags(
 def get_station_lags(
     dat: pd.DataFrame,
     depvar: str,
-    lags: List[int],
+    lags: list[int],
 ) -> pd.DataFrame:
     """Add time lags to DataFrame.
 

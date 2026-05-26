@@ -1,34 +1,31 @@
-import logging
-from logging.config import dictConfig
-from typing import Any, Optional, Tuple
+"""Retrieve feature data from ClickHouse for model training and prediction."""
+
+from typing import Any
 
 import pandas as pd
-from retrying import retry
+from clickhouse_connect.driver.exceptions import OperationalError
+from loguru import logger
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_fixed
 
 from fairqmodel.db_connect import db_connect_source, db_connect_target, get_query
 from fairqmodel.time_handling import get_current_local_time
-from logging_config.logger_config import get_logger_config
-
-dictConfig(get_logger_config())
-
-# debugging
-# mode = "stations"
-# batch = 1
-# date_time_min = pd.Timestamp("2024-01-01 00:00:00")
-# date_time_max = pd.Timestamp("2024-01-02 00:00:00")
-# only_active_stations = False
 
 
-@retry(stop_max_attempt_number=3, wait_fixed=60000)
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_fixed(60),
+    retry=retry_if_exception_type(OperationalError),
+    reraise=True,
+)
 def retrieve_data(
     mode: str,
-    date_time_min: Optional[pd.Timestamp] = None,
-    date_time_max: Optional[pd.Timestamp] = None,
-    batch: Optional[int] = None,
+    date_time_min: pd.Timestamp | None = None,
+    date_time_max: pd.Timestamp | None = None,
+    batch: int | None = None,
     include_future_data: bool = True,
     only_active_stations: bool = True,
 ) -> pd.DataFrame:
-    """Retrieving all features for selected coordinates. Either for the stations or a given batch.
+    """Retrieve all features for selected coordinates. Either for the stations or a given batch.
 
     :param mode: str, One of "stations", "grid", "grid_sim" and  "passive_samplers",
     specifies which tables are used for loading the data.
@@ -46,7 +43,7 @@ def retrieve_data(
     if mode not in ["stations", "grid", "passive_samplers", "grid_sim"]:
         raise ValueError("Mode must be one of: stations, grid, passive_samplers, grid_sim")
 
-    logging.info("Loading data")
+    logger.info("Loading data")
 
     coord_query_params: dict[str, Any] = {}
     if mode in ("stations", "passive_samplers"):
@@ -72,15 +69,15 @@ def retrieve_data(
         "date_time_max": date_time_max,
     }
 
-    logging.info("Query params: date_time_min = '{}', date_time_max = '{}'".format(date_time_min, date_time_max))
+    logger.info(f"Query params: date_time_min = '{date_time_min}', date_time_max = '{date_time_max}'")
     with db_connect_source() as db:
         db.execute(get_query(coord_query, {"mode": mode}), params=coord_query_params)
         db.execute(get_query("feature_station_avg"), params=query_params)
         dat = db.query_dataframe(filled_query, params=query_params)
-    logging.info("Data successfully loaded\n")
+    logger.info("Data successfully loaded\n")
 
     if dat.duplicated().any():
-        logging.warning("Data contains duplicates")
+        logger.warning("Data contains duplicates")
 
     check_number_of_rows(batch, mode, dat, date_time_min, date_time_max)
 
@@ -88,12 +85,12 @@ def retrieve_data(
 
 
 def fill_in_date_min_and_max(
-    date_time_min: Optional[pd.Timestamp],
-    date_time_max: Optional[pd.Timestamp],
+    date_time_min: pd.Timestamp | None,
+    date_time_max: pd.Timestamp | None,
     include_future_data: bool,
-) -> Tuple[pd.Timestamp, pd.Timestamp]:
-    """
-    Fill in min and max date if they are None
+) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """Fill in min and max date if they are None.
+
     :param date_time_min: Optional[pd.Timestamp], Minimal date to select
     :param date_time_max: Optional[pd.Timestamp], Maximal date to select
     :param include_future_data: bool, If date_time_max is not set, it specifies
@@ -114,14 +111,14 @@ def fill_in_date_min_and_max(
 
 
 def check_number_of_rows(
-    batch: Optional[int],
-    mode: Optional[str],
+    batch: int | None,
+    mode: str | None,
     dat: pd.DataFrame,
     date_time_min: pd.Timestamp,
     date_time_max: pd.Timestamp,
 ) -> bool:
-    """
-    Check number of rows in the data under the assumption that hourly data is required for each pair of coordinates.
+    """Check number of rows in the data under the assumption that hourly data is required for each pair of coordinates.
+
     Fails if there are not enough data points for a coordinate pair, including the case that the coordinates are
     completely absent.
 
@@ -147,14 +144,12 @@ def check_number_of_rows(
     if expected_rows != len(dat):
         batch_msg = f" in batch {batch}" if batch is not None else ""
         msg = f"Expected Rows{batch_msg}: {expected_rows} do not match len(dat) = {len(dat)} - ok for training"
-        logging.warning(msg)
+        logger.warning(msg)
         return False
-    else:
-        return True
+    return True
 
 
 def retrieve_cap_values() -> pd.DataFrame:
+    """Retrieve cap values for outlier removal from the database."""
     with db_connect_target() as db:
-        cap_values = db.query_dataframe(get_query("cap_values"))
-
-    return cap_values
+        return db.query_dataframe(get_query("cap_values"))

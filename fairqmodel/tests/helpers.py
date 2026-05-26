@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta
-from typing import List, Tuple
+"""Test helper utilities for lag prediction tests."""
+
+from datetime import UTC, datetime
 
 import numpy as np
 import pandas as pd
@@ -10,8 +11,9 @@ from fairqmodel.prediction_t_plus_k import get_model_settings
 from fairqmodel.time_features import time_features
 
 
-def arrange_for_lag_pred_tests() -> Tuple[pd.DataFrame, dict, pd.Timestamp, List[str]]:
-    """Performs the arrange step from the test_pre_fill_lags function.
+def arrange_for_lag_pred_tests() -> tuple[pd.DataFrame, dict, pd.Timestamp, list[str]]:
+    """Perform the arrange step for lag prediction tests.
+
     A pre-trained model is loaded and a dummy DataFrame is constructed.
     The returned variables are:
         - pd.DataFrame, Containing dummy data
@@ -48,18 +50,15 @@ def arrange_for_lag_pred_tests() -> Tuple[pd.DataFrame, dict, pd.Timestamp, List
     dat = pd.DataFrame(data, columns=features)
 
     # Fill the devpar column with available 'observations'
-    dat.loc[:, depvar] = np.arange(0, observed_time_points).tolist() + [None] * (
-        time_points - observed_time_points
-    )
+    dat.loc[:, depvar] = np.arange(0, observed_time_points).tolist() + [None] * (time_points - observed_time_points)
 
     # Set an arbitrary station_id to enable the lag construction
     dat.loc[:, "station_id"] = "314"
 
     # Fill the 'date_time' column with real but arbitrary dates
-    dat.loc[:, "date_time"] = np.arange(
-        datetime(2021, 1, 1), datetime(2022, 1, 1), timedelta(hours=1)
-    ).astype(datetime)[:time_points]
-    dat["date_time"] = dat["date_time"].dt.tz_localize("UTC")
+    dat.loc[:, "date_time"] = pd.date_range(  # type: ignore[call-overload]
+        start=datetime(2021, 1, 1, tzinfo=UTC), periods=time_points, freq="h", tz="UTC"
+    )
 
     # Select the date that is used as 'min_date' for the pre_fill function
     date_min = pd.Timestamp("2021-01-01 03:00:00", tz="UTC")

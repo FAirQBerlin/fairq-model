@@ -1,5 +1,5 @@
-"""
-This script performs temporal predictions at the stations for the future.
+"""Perform temporal predictions at the stations for the future.
+
 The prediction is performed from the execution date, up to a selected number of days into the future.
 A pre-trained model is loaded from the DB.
 The predictions can be written to the DB.
@@ -7,11 +7,11 @@ The predictions can be written to the DB.
 NOTE: Script is used for daily jobs -> Don't change the model_id.
 """
 
-import logging
-from logging.config import dictConfig
+import sys
 
 import numpy as np
 import pandas as pd
+from loguru import logger
 
 import fairqmodel as fqm
 from fairqmodel.command_line_args import get_command_args
@@ -27,11 +27,11 @@ from fairqmodel.read_write_model_aux_functions import model_name_str
 from fairqmodel.retrieve_data import retrieve_data
 from fairqmodel.time_features import time_features
 from fairqmodel.time_handling import get_model_start_time
-from logging_config.logger_config import get_logger_config
 
-dictConfig(get_logger_config())
+logger.remove()
+logger.add(sys.stdout, level="INFO")
 
-logging.info("Using fairqmodel in version: {}".format(fqm.__version__))
+logger.info(f"Using fairqmodel in version: {fqm.__version__}")
 
 # Configuration
 DEV = False
@@ -42,7 +42,7 @@ model_type = "temporal"  # "temporal", "spatial"
 # passed command args sample: ['filename.py', 'depvar=no2', 'write_db=True']
 depvar = get_command_args("depvar") or "no2"
 write_db = get_command_args("write_db") or False
-logging.info("Starting with depvar = {}, write_db = {}".format(depvar, write_db))
+logger.info(f"Starting with depvar = {depvar}, write_db = {write_db}")
 
 max_lag_hours = 48
 
@@ -68,15 +68,11 @@ forecast_hours = -(date_now - dat.date_time.max()) / np.timedelta64(1, "h")
 
 # Retrieve selected model and settings
 with db_connect_target() as db:
-    model_id = db.query_dataframe(
-        get_query("final_model_id"), params={"model_type": model_type, "depvar": depvar}
-    )
+    model_id = db.query_dataframe(get_query("final_model_id"), params={"model_type": model_type, "depvar": depvar})
 
 model_id = model_id.model_id[0]
 
-logging.info(
-    "Using model with id {}, predicting the upcoming {} hours".format(model_id, int(forecast_hours))
-)
+logger.info(f"Using model with id {model_id}, predicting the upcoming {int(forecast_hours)} hours")
 
 query_params = {"model_type": model_name_str(model_type), "depvar": depvar}
 
@@ -104,21 +100,17 @@ t_plus_k_params = {
 # Specify the DB target table
 table_name = "model_predictions_temporal"
 
-all_stations = sorted(list(dat.station_id.unique()))
+all_stations = sorted(dat.station_id.unique())
 
-logging.info(f"Predictions will be performed for the stations: \n \t {all_stations}")
+logger.info(f"Predictions will be performed for the stations: \n \t {all_stations}")
 
 # Perform the forecast for one station at a time.
 for station in all_stations:
-    logging.info(f"Current 'station_id': {station}")
+    logger.info(f"Current 'station_id': {station}")
     dat_station = dat.query(f"station_id == '{station}'").copy(deep=True)
-    dat_station = time_features(
-        dat_station, depvar=depvar, lags_actual=lags_actual, lags_avg=lags_avg
-    )
+    dat_station = time_features(dat_station, depvar=depvar, lags_actual=lags_actual, lags_avg=lags_avg)
     dat_station.query(f"date_time >= '{date_now}'", inplace=True)
-    dat_station = fix_column_types(
-        dat_station.copy(deep=True), categorical_feature_cols, metric_feature_cols
-    )
+    dat_station = fix_column_types(dat_station.copy(deep=True), categorical_feature_cols, metric_feature_cols)
     dat_station.reset_index(level=0, inplace=True, drop=True)
     prediction_t_plus_k(
         dat_station,
@@ -135,6 +127,6 @@ for station in all_stations:
         calc_metrics=False,  # can't be calculated for future data
         include_current_time_point=True,
     )
-    logging.info(f"Finished 'station_id': {station}\n")
+    logger.info(f"Finished 'station_id': {station}\n")
 
-logging.info(f"Finished predictions with depvar: {depvar}")
+logger.info(f"Finished predictions with depvar: {depvar}")

@@ -1,3 +1,4 @@
+.devcontainer/*
 .idea/
 *.csv
 *.ipynb_checkpoints
@@ -70,6 +71,7 @@ results.xml
 .hypothesis/
 .pytest_cache/
 cover/
+*.env
 
 # Translations
 *.mo

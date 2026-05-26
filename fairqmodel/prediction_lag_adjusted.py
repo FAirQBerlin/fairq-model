@@ -1,32 +1,26 @@
-import logging
-from logging.config import dictConfig
-from typing import List, Optional, Tuple
+"""Perform lag-adjusted predictions iteratively for each time point in a fold."""
 
 import numpy as np
 import pandas as pd
+from loguru import logger
 from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
 
 from fairqmodel.model_wrapper import ModelWrapper
-from logging_config.logger_config import get_logger_config
-
-dictConfig(get_logger_config())
 
 
 def make_lag_adjusted_prediction(
     fold: dict,
     models: ModelWrapper,
-    feature_cols: List[str],
     depvar: str,
-    lags_actual: List[int],
-    lags_avg: List[int],
+    lags_actual: list[int],
+    lags_avg: list[int],
     calc_metrics: bool = False,
     testing: bool = False,
-) -> Tuple[pd.DataFrame, Optional[float]]:
-    """Evaluates the lag adjusted predictions for a given fold.
+) -> tuple[pd.DataFrame, float | None]:
+    """Evaluate the lag adjusted predictions for a given fold.
 
     :param fold: dic, Contains information of the fold
     :param models: ModelWrapper, Wrapper object containing one or two models
-    :param feature_cols: List, Contains variable names
     :param lags_actual: List, Actual lags
     :param lags_avg: List, Lags for average feature
     :param calc_metrics, bool, Specifies if metrics will be printed for predictions
@@ -49,7 +43,6 @@ def make_lag_adjusted_prediction(
             fold_dat_for_loop,
             time_point,
             models,
-            feature_cols,
             depvar,
             loop_index,
             lags_actual,
@@ -74,7 +67,7 @@ def make_lag_adjusted_prediction(
         mae = mean_absolute_error(label, predictions)
         r2 = r2_score(label, predictions)
 
-        logging.info(f"{rmse=:.3f}\t{mae=:.3f}\t{r2=:.3f} \n")
+        logger.info(f"{rmse=:.3f}\t{mae=:.3f}\t{r2=:.3f} \n")
         metric_value = rmse
 
     return all_results, metric_value
@@ -88,6 +81,7 @@ def prepare_fold_test_dat(fold_dat_test: pd.DataFrame):
 
     Returns:
         pandas.DataFrame, the test data for the time series model
+
     """
     # TODO: duplicates should have been solved previously
     fold_dat_test_for_loop = fold_dat_test.copy(deep=True).drop_duplicates(subset=["station_id", "date_time"])
@@ -99,12 +93,11 @@ def get_lag_adjusted_prediction(
     fold_dat_test_for_loop: pd.DataFrame,
     time_point: str,
     models: ModelWrapper,
-    feature_cols: List[str],
     depvar: str,
     loop_index: int,
-    lags_actual: List[int],
-    lags_avg: List[int],
-    loop_results: List,
+    lags_actual: list[int],
+    lags_avg: list[int],
+    loop_results: list,
 ) -> dict:
     """Get the lag adjusted prediction.
 
@@ -112,7 +105,6 @@ def get_lag_adjusted_prediction(
         fold_dat_test_for_loop: pandas.DataFrame, test data
         time_point: str, time point to filter the test data
         models: ModelWrapper, Wrapper object containing one or two models
-        feature_cols: List[str] of str, feature columns
         depvar: str, dependent variable
         loop_index: int, loop index used to determine the lag correction
         lags_actual: List, Actual lags
@@ -148,10 +140,10 @@ def get_lag_adjusted_prediction(
 
 def fill_lags_with_previous_predictions(
     row_for_pred: pd.DataFrame,
-    lags_actual: List[int],
-    lags_avg: List[int],
+    lags_actual: list[int],
+    lags_avg: list[int],
     loop_index: int,
-    loop_results: List[dict],
+    loop_results: list[dict],
     depvar: str,
 ):
     """Fill the lags with the previous predictions.
@@ -166,8 +158,9 @@ def fill_lags_with_previous_predictions(
 
     Returns:
         pandas.DataFrame, the row to use for prediction
+
     """
-    lags_all = sorted(list(set(lags_actual + lags_avg)))
+    lags_all = sorted(set(lags_actual + lags_avg))
 
     # Update both types of lags
     for lag in lags_all:
@@ -196,7 +189,7 @@ def fill_lags_with_previous_predictions(
 def overwrite_lags_with_prev_predictions(
     row_for_pred: pd.DataFrame,
     lag: int,
-    loop_results: List[dict],
+    loop_results: list[dict],
     depvar: str,
 ):
     """Overwrite the lags with the previous predictions.
@@ -209,6 +202,7 @@ def overwrite_lags_with_prev_predictions(
 
     Returns:
         pandas.DataFrame, the row_for_pred with the lag replaced with the previous predictions
+
     """
     # Subtract lag hours from current_time_point to find the past prediction to overwrite the lag value
     current_time_point = row_for_pred.date_time.iloc[0]
@@ -225,7 +219,7 @@ def overwrite_lags_with_prev_predictions(
     return row_for_pred
 
 
-def get_eval_metrics(loop_results: List[dict], depvar: str) -> pd.DataFrame:
+def get_eval_metrics(loop_results: list[dict], depvar: str) -> pd.DataFrame:
     """Get the evaluation metrics.
 
     Args:
@@ -234,8 +228,8 @@ def get_eval_metrics(loop_results: List[dict], depvar: str) -> pd.DataFrame:
 
     Returns:
         dict, the evaluation metrics for the time series model
-    """
 
+    """
     eval_metrics = []
     all_data_joint = []
     for loop_res in loop_results:

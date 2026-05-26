@@ -1,6 +1,8 @@
+"""Unit tests for data_preprocessing module."""
+
 import pandas as pd
+import pytest
 from pandas.testing import assert_frame_equal
-from pytest import raises
 
 from fairqmodel.data_preprocessing import (
     cap_high_values,
@@ -11,28 +13,28 @@ from fairqmodel.data_preprocessing import (
 
 
 def test_fix_column_types_columns():
-    """
-    Checks if feature names are in DataFrame.
-    """
+    """Check if feature names are in DataFrame."""
     # arrange
     dat = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4], "date_time": [1, 2]})
     categorical_feature_cols = ["col1"]
     metric_feature_cols = ["col42"]
 
     # act/assert
-    with raises(KeyError):
+    with pytest.raises(KeyError):
         fix_column_types(dat, categorical_feature_cols, metric_feature_cols)
 
 
 def test_fix_column_type_output():
-    """
-    Checks the returend DataFrame for data and correct dtype.
-    """
+    """Check the returned DataFrame for data and correct dtype."""
     # arrange
     date_now = "2018-10-26 13:00:00"
     dat = pd.DataFrame(data={"col1": [1, 2], "col2": [3, 4], "date_time": date_now})
     expected = pd.DataFrame(
-        data={"col1": pd.Series([1, 2]).astype("category"), "col2": [3.0, 4.0], "date_time": pd.to_datetime(date_now)}
+        data={
+            "col1": pd.Series([1, 2]).astype("category"),
+            "col2": [3.0, 4.0],
+            "date_time": pd.to_datetime(date_now),
+        }
     )
     categorical_feature_cols = ["col1"]
     metric_feature_cols = ["col2"]
@@ -45,8 +47,13 @@ def test_fix_column_type_output():
 
 
 def test_drop_stations_without_this_depvar():
+    """Check that stations without any depvar values are dropped."""
     input_df = pd.DataFrame(
-        {"station_id": [1, 1, 2, 2, 3], "depvar": [None, None, 5.0, 6, 7], "not_the_depvar": [1.0, 2, None, None, 4]}
+        {
+            "station_id": [1, 1, 2, 2, 3],
+            "depvar": [None, None, 5.0, 6, 7],
+            "not_the_depvar": [1.0, 2, None, None, 4],
+        }
     )
     expected = pd.DataFrame({"station_id": [2, 2, 3], "depvar": [5.0, 6, 7], "not_the_depvar": [None, None, 4]})
     res = drop_stations_without_this_depvar(input_df, "depvar").reset_index(drop=True)
@@ -54,12 +61,14 @@ def test_drop_stations_without_this_depvar():
 
 
 def test_drop_stations_without_this_depvar_no_change():
+    """Check that stations with depvar values are not dropped."""
     input_df = pd.DataFrame({"station_id": [1, 1, 2, 2, 3], "depvar": range(5)})
     res = drop_stations_without_this_depvar(input_df, "depvar").reset_index(drop=True)
     assert_frame_equal(res, input_df)
 
 
 def test_remove_outliers():
+    """Check that outlier values are capped at the provided cap values."""
     # Arrange
     dummy_data = [1, 2, 3, 4, 5]
     dat = pd.DataFrame({"no2": dummy_data, "pm10": dummy_data, "pm25": dummy_data})
@@ -86,6 +95,7 @@ def test_remove_outliers():
 
 
 def test_cap_high_values():
+    """Check that high training values for the depvar and its lags are capped."""
     # Arrange
     dummy_data = [1, 2, 3, 4, 5, 6]
     dat = pd.DataFrame(

@@ -1,5 +1,5 @@
-"""
-In this script, the model is repeatedly fitted.
+"""Repeatedly fit the model in a leave-one-station-out cross-validation.
+
 In each step, it is fitted on all but one stations. Then we make predictions for that one station.
 This helps to estimate the model performance when making predictions for grid cells we don't have measures for.
 The predictions are only for t itself (not into the future) because we focus on the spatial aspect here.
@@ -7,10 +7,10 @@ The model does not include lags because there are no lags available away the sta
 The predictions are written to the database to be used in a Dashboard.
 """
 
-import logging
-from logging.config import dictConfig
+import sys
 
 import pandas as pd
+from loguru import logger
 from sklearn.metrics import mean_absolute_error, r2_score, root_mean_squared_error
 
 from fairqmodel.command_line_args import get_command_args
@@ -29,9 +29,9 @@ from fairqmodel.read_write_model_db import save_model_to_db
 from fairqmodel.retrieve_data import retrieve_data
 from fairqmodel.time_features import time_features
 from fairqmodel.time_handling import get_current_local_time
-from logging_config.logger_config import get_logger_config
 
-dictConfig(get_logger_config())
+logger.remove()
+logger.add(sys.stdout, level="INFO")
 
 use_two_stages = True
 
@@ -44,7 +44,7 @@ write_db = get_command_args("write_db") or False
 with db_connect_source() as db:
     id_type_mapping_df = db.query_dataframe(get_query("id_type_mapping"))
 
-id_type_mapping = dict(zip(id_type_mapping_df.id, id_type_mapping_df.stattyp))
+id_type_mapping = dict(zip(id_type_mapping_df.id, id_type_mapping_df.stattyp, strict=False))
 
 # Retrieve and pre-process data from the DB
 date_min = get_train_date_min(depvar)
@@ -52,9 +52,7 @@ date_min = get_train_date_min(depvar)
 
 date_max = "2024-07-01 00:00:00"
 
-logging.info(
-    "Started '4_cv_loso' for {} for time frame: [{}, {}]".format(depvar, date_min, date_max)
-)
+logger.info(f"Started '4_cv_loso' for {depvar} for time frame: [{date_min}, {date_max}]")
 
 dat = retrieve_data(
     mode="stations",
@@ -80,9 +78,7 @@ non_missing_rows = dat.loc[:, depvar].notna()
 dat = dat.loc[non_missing_rows, :].reset_index(drop=True)
 
 # Select variables and fix dtypes
-feature_cols, metric_feature_cols, categorical_feature_cols = get_variables(
-    depvar, lags_actual, lags_avg, dev=dev
-)
+feature_cols, metric_feature_cols, categorical_feature_cols = get_variables(depvar, lags_actual, lags_avg, dev=dev)
 
 dat = fix_column_types(dat, categorical_feature_cols, metric_feature_cols)
 
@@ -97,7 +93,7 @@ all_station_ids = dat.station_id.unique().tolist()
 
 # Loop compares how good left-out stations are estimated.
 for station_id in all_station_ids:
-    logging.info(f"Now predicting station '{station_id}'")
+    logger.info(f"Now predicting station '{station_id}'")
     station_type = id_type_mapping[station_id]
 
     # Split data into train and test splits
@@ -122,15 +118,13 @@ for station_id in all_station_ids:
     mae = mean_absolute_error(label, predictions)
     r2 = r2_score(label, predictions)
 
-    logging.info(f"{station_id=}\t{rmse=:.3f}\t{mae=:.3f}\t{r2=:.3f}\t{station_type=}")
+    logger.info(f"{station_id=}\t{rmse=:.3f}\t{mae=:.3f}\t{r2=:.3f}\t{station_type=}")
 
     if write_db:
         # Write models to DB
         model_name = f"spatial_cv_without_station_{station_id}"
 
-        model_1_description, model_2_description = create_model_description(
-            models, dat_train, lags_actual, lags_avg
-        )
+        model_1_description, model_2_description = create_model_description(models, dat_train, lags_actual, lags_avg)
         model_id = save_model_to_db(
             models=models,
             model_name=model_name,
@@ -147,6 +141,4 @@ for station_id in all_station_ids:
         # Reorder columns
         df_predictions = df_predictions[["model_id", "date_time", "station_id", "value"]]
 
-        send_data_clickhouse(
-            df=df_predictions, table_name="model_predictions_spatial_cv", mode="replace"
-        )
+        send_data_clickhouse(df=df_predictions, table_name="model_predictions_spatial_cv", mode="replace")

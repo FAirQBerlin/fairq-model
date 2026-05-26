@@ -1,5 +1,5 @@
-"""
-This script performs temporal predictions at the stations for a selected time window.
+"""Perform temporal predictions at the stations for a selected time window.
+
 The time window can, but doesn't have to, lie in the past.
 A pre-trained model is loaded from the DB.
 The predictions can be written to the DB.
@@ -9,22 +9,26 @@ traffic thresholds.
 Potentially this script could also be used for other tasks that require past predictions.
 """
 
-import logging
-from logging.config import dictConfig
+import sys
 
 import pandas as pd
+from loguru import logger
 
 from fairqmodel.command_line_args import get_command_args
-from fairqmodel.data_preprocessing import cap_outliers, drop_stations_without_this_depvar, fix_column_types
+from fairqmodel.data_preprocessing import (
+    cap_outliers,
+    drop_stations_without_this_depvar,
+    fix_column_types,
+)
 from fairqmodel.db_connect import db_connect_target, get_query
 from fairqmodel.prediction_t_plus_k import get_model_settings, prediction_t_plus_k
 from fairqmodel.read_write_model_aux_functions import model_name_str
 from fairqmodel.retrieve_data import retrieve_data
 from fairqmodel.time_features import time_features
 from fairqmodel.time_handling import get_current_local_time
-from logging_config.logger_config import get_logger_config
 
-dictConfig(get_logger_config())
+logger.remove()
+logger.add(sys.stdout, level="INFO")
 
 # Configuration
 DEV = False
@@ -73,10 +77,9 @@ with db_connect_target() as db:
 model_settings = get_model_settings(available_models, model_id)
 
 
-logging.info(
-    "Started '3b_make_pred_at_stations_past' for {} with model_id {} for time frame: [{}, {}]".format(
-        depvar, model_id, date_min, date_max
-    )
+logger.info(
+    f"Started '3b_make_pred_at_stations_past' for {depvar} with model_id {model_id}"
+    f" for time frame: [{date_min}, {date_max}]"
 )
 
 
@@ -122,4 +125,4 @@ prediction_t_plus_k(
     calc_metrics=verbose,
 )
 
-logging.info(f"Finished predictions with depvar: {depvar}")
+logger.info(f"Finished predictions with depvar: {depvar}")

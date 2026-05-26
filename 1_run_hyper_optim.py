@@ -1,5 +1,5 @@
-"""
-This script optimizes the set of model hyper parameters.
+"""Optimize the set of model hyper parameters.
+
 Different combinations of parameters are considered using the Optuna tool.
 Tested parameters and corresponding evaluation results are stored in a local DB.
 To use them in future models, they must be updated in fairqmodel/params/xgboost_params.json].
@@ -8,7 +8,11 @@ To use them in future models, they must be updated in fairqmodel/params/xgboost_
 import pandas as pd
 
 from fairqmodel.command_line_args import get_command_args
-from fairqmodel.data_preprocessing import cap_outliers, drop_stations_without_this_depvar, fix_column_types
+from fairqmodel.data_preprocessing import (
+    cap_outliers,
+    drop_stations_without_this_depvar,
+    fix_column_types,
+)
 from fairqmodel.hyper_optim import hyper_opt
 from fairqmodel.model_parameters import get_lag_options, get_train_date_min, get_variables
 from fairqmodel.retrieve_data import retrieve_data
@@ -49,7 +53,11 @@ use_two_stages = True
 assert use_two_stages or optimize_stage == 1
 
 # If the parameters of the second stage are optimized, a pre-trained first stage must be selected.
-model_id_dict = {"no2": 369, "pm25": 368, "pm10": 370}  # Optimized first stages with monotonic constraints
+model_id_dict = {
+    "no2": 369,
+    "pm25": 368,
+    "pm10": 370,
+}  # Optimized first stages with monotonic constraints
 first_stage_model_id = model_id_dict[depvar] if use_two_stages else None
 
 
@@ -102,7 +110,7 @@ if use_lags and optimize_lags:
 # Choose lags
 # Every possible lag column is created here.
 # During optimization only a few of these are selected per trial.
-lags_actual = [lag for lag in set([lag for option in lag_options for lag in option])]
+lags_actual = list({lag for option in lag_options for lag in option})
 
 # Create time features for each data point
 dat = time_features(dat, depvar=depvar, lags_actual=lags_actual, lags_avg=lags_avg)

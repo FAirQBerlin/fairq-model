@@ -1,13 +1,12 @@
-import logging
+"""Parse command-line arguments for model scripts."""
+
 import sys
-from logging.config import dictConfig
 
-from logging_config.logger_config import get_logger_config
-
-dictConfig(get_logger_config())
+from loguru import logger
 
 
 def get_command_args(argument):
+    """Parse and return the value of the specified command-line argument."""
     argument_val = [arg for arg in sys.argv if argument in arg]
 
     if argument_val == []:
@@ -23,6 +22,6 @@ def get_command_args(argument):
         elif argument_val not in ["no2", "pm10", "pm25", "grid", "grid_sim"]:
             argument_val = int(argument_val)
 
-    logging.info(f"Command line arg {argument} = {argument_val}")
+    logger.info(f"Command line arg {argument} = {argument_val}")
 
     return argument_val

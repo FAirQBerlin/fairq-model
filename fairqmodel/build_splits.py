@@ -1,14 +1,10 @@
-import logging
+"""Build time series cross-validation splits for model training and evaluation."""
+
 from datetime import datetime
-from logging.config import dictConfig
-from typing import Optional
 
 import pandas as pd
 import pytz
-
-from logging_config.logger_config import get_logger_config
-
-dictConfig(get_logger_config())
+from loguru import logger
 
 
 def prepare_folded_input(
@@ -16,11 +12,12 @@ def prepare_folded_input(
     n_cv_windows: int = 90,
     n_train_years: int = 3,
     test_cv_window_size: int = 24,
-    step_size: Optional[int] = None,
-    prediction_hour: Optional[int] = None,
+    step_size: int | None = None,
+    prediction_hour: int | None = None,
     include_current_time_point: bool = False,
 ) -> list[dict]:
     """Prepare the input for the time series cross validation.
+
     Args:
         dat: pd.DataFrame, data
         n_cv_windows: int, number of cross validation windows
@@ -33,8 +30,9 @@ def prepare_folded_input(
                                            Default is False
     Returns:
         List[dict], each dict contains the train and test data
+
     """
-    logging.info("Prepare folded data")
+    logger.info("Prepare folded data")
     days_per_year = 365
     hours_per_day = 24
     train_window_size = n_train_years * days_per_year * hours_per_day
@@ -83,6 +81,7 @@ def prepare_folded_input(
 
 
 def convert_to_local_time(time_stamp):
+    """Convert a UTC timestamp to Europe/Berlin local time."""
     return time_stamp.tz_convert(
         tz="Europe/Berlin",
     )
@@ -109,10 +108,8 @@ def slice_data_frame(
     ]
 
 
-def set_prediction_hour(
-    prediction_hour: int, max_date: datetime, prediction_window_size: int
-) -> datetime:
-    """Sets 'max_date' s.t. the predictions are performed at the selected time.
+def set_prediction_hour(prediction_hour: int, max_date: datetime, prediction_window_size: int) -> datetime:
+    """Set 'max_date' s.t. the predictions are performed at the selected time.
 
     :param prediction_hour: int, Hour of the day, when the prediction should be performed, Berlin Time
     :param max_date: datetime, Maximal available date, in UTC but tz naive
@@ -120,25 +117,17 @@ def set_prediction_hour(
 
     :return:datetime, New 'max_date' with selected 'prediction_hour', in UTC but tz naive
     """
-    max_date_berlin = (
-        pytz.timezone("UTC").localize(max_date).astimezone(pytz.timezone("Europe/Berlin"))
-    )
+    max_date_berlin = pytz.timezone("UTC").localize(max_date).astimezone(pytz.timezone("Europe/Berlin"))
     first_pred_date = max_date_berlin - pd.Timedelta(f"{prediction_window_size} hours")
 
     if first_pred_date.hour > prediction_hour:
         # Floor down to correct hour
-        new_max_date_berlin = max_date_berlin - pd.Timedelta(
-            first_pred_date.hour - prediction_hour, "hours"
-        )
+        new_max_date_berlin = max_date_berlin - pd.Timedelta(first_pred_date.hour - prediction_hour, "hours")
     elif first_pred_date.hour < prediction_hour:
         # Increase to correct hour and decrease by one day
-        new_max_date_berlin = max_date_berlin - pd.Timedelta(
-            24 + (first_pred_date.hour - prediction_hour), "hours"
-        )
+        new_max_date_berlin = max_date_berlin - pd.Timedelta(24 + (first_pred_date.hour - prediction_hour), "hours")
     else:
         # Prediction is already performed at correct hour
         new_max_date_berlin = max_date_berlin
 
-    new_max_date = new_max_date_berlin.astimezone(pytz.timezone("UTC")).replace(tzinfo=None)
-
-    return new_max_date
+    return new_max_date_berlin.astimezone(pytz.timezone("UTC")).replace(tzinfo=None)

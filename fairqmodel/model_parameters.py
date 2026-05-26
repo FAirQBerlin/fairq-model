@@ -1,10 +1,11 @@
+"""Load and provide model parameters, variable lists, and configuration values."""
+
 import json
-import os
-from typing import List, Optional, Tuple
+from pathlib import Path
 
 
 def get_xgboost_param(depvar: str, use_two_stages: bool = False, stage: int = 1, dev: bool = False) -> tuple[dict, int]:
-    """Loads the optimal set of xgboost parameters from .json file
+    """Load the optimal set of xgboost parameters from a .json file.
 
     :param depvar: str, Selected dependent variable
     :param use_two_stages: bool, Specifies if one or two models are used.
@@ -22,7 +23,8 @@ def get_xgboost_param(depvar: str, use_two_stages: bool = False, stage: int = 1,
 
 
 def remove_weighted_average_vars(metric_variables: list[str]) -> list[str]:
-    """Removes variables with 'wavg' (weighted average) in the name.
+    """Remove variables with 'wavg' (weighted average) in the name.
+
     This is necessary for the model at the stations, i.e. with lags,
     as the station model cannot use its own weighted averages (circularity)
 
@@ -34,9 +36,9 @@ def remove_weighted_average_vars(metric_variables: list[str]) -> list[str]:
 
 
 def get_variables(
-    depvar: str, lags_actual: List[int], lags_avg: List[int] = [], dev: bool = False
+    depvar: str, lags_actual: list[int], lags_avg: list[int] | None = None, dev: bool = False
 ) -> tuple[list[str], list[str], list[str]]:
-    """Loads the list of available variable names from .json file
+    """Load the list of available variable names from a .json file.
 
     :param depvar: str, selected dependent variable
     :param lags_actual: List[int], lag values for each data point
@@ -46,7 +48,8 @@ def get_variables(
     :return: list[list[str], list[str], list[str]], nested list where inner lists are:
              names of all variables, names of metric variables, names of categoric variables.
     """
-
+    if lags_avg is None:
+        lags_avg = []
     if depvar not in ["pm10", "pm25", "no2"]:
         raise ValueError(f"Selected invalid dependent variable: {depvar}")
 
@@ -73,7 +76,8 @@ def get_variables(
 
 
 def load_json(target_dir: str, target_filename: str, selector: str) -> dict:
-    """Loads the dictionary stored in a .json file.
+    """Load the dictionary stored in a .json file.
+
     Here, used to either load model parameters or variable names.
 
     :param target_dir: str, name of the parent directory of the .json file
@@ -82,35 +86,32 @@ def load_json(target_dir: str, target_filename: str, selector: str) -> dict:
 
     :return: dict, selected content from the .json
     """
-    temp = json.load(open(os.path.join(os.path.dirname(__file__), target_dir, f"{target_filename}.json")))
+    with (Path(__file__).parent / target_dir / f"{target_filename}.json").open() as f:
+        temp = json.load(f)
     try:
         return temp[selector]
     except KeyError:
-        raise KeyError(f"Used invalid key to query the file: {selector}.")
+        raise KeyError(f"Used invalid key to query the file: {selector}.") from None
 
 
 def get_pollution_limits() -> dict:
-    """Loads the allowed limit values per pollutant.
+    """Load the allowed limit values per pollutant.
 
     :return: dict
     """
-    limit_values = load_json(target_dir="params", target_filename="limit_values", selector="limit_values")
-
-    return limit_values
+    return load_json(target_dir="params", target_filename="limit_values", selector="limit_values")
 
 
 def get_tweak_values() -> dict:
-    """Loads the optimized tweak values per pollutant.
+    """Load the optimized tweak values per pollutant.
 
     :return: dict
     """
-    tweak_values = load_json(target_dir="params", target_filename="limit_values", selector="tweak_values")
-
-    return tweak_values
+    return load_json(target_dir="params", target_filename="limit_values", selector="tweak_values")
 
 
 def get_train_date_min(depvar: str) -> dict:
-    """get the train date min for one depvar
+    """Get the train date min for one depvar.
 
     :return: dict
     """
@@ -123,9 +124,11 @@ def get_train_date_min(depvar: str) -> dict:
 
 
 def get_lags(
-    use_lags: bool = True, selected_lags: Optional[List[int]] = None, lags_avg: Optional[List[int]] = None
-) -> Tuple[List[int], List[int]]:
-    """Provides lag values. Per default returns either the optimized lags or an empty list.
+    use_lags: bool = True, selected_lags: list[int] | None = None, lags_avg: list[int] | None = None
+) -> tuple[list[int], list[int]]:
+    """Provide lag values.
+
+    Per default returns either the optimized lags or an empty list.
     It is however possible to select other lags and lags to build an average feature.
 
     :param use_lags: bool, Specifies if any lags are used.
@@ -144,14 +147,15 @@ def get_lags(
         lags_avg = []
 
     # Remove potential duplicates and sort values
-    lags_actual = sorted(list(set(lags_actual)))
-    lags_avg = sorted(list(set(lags_avg)))
+    lags_actual = sorted(set(lags_actual))
+    lags_avg = sorted(set(lags_avg))
 
     return lags_actual, lags_avg
 
 
-def get_lag_options(use_lags: bool, lags_avg: List[int] = []) -> Tuple[List[List[int]], List[int]]:
-    """Provides access to lag combinations for the HPO.
+def get_lag_options(use_lags: bool, lags_avg: list[int] | None = None) -> tuple[list[list[int]], list[int]]:
+    """Provide access to lag combinations for the HPO.
+
     Since the optimization can only suggest a single value,
     the suggested int is used as an index to select one of
     the below lag combinations.
@@ -164,7 +168,9 @@ def get_lag_options(use_lags: bool, lags_avg: List[int] = []) -> Tuple[List[List
     :return: List[List[int]]
 
     """
-    lag_options: List[List[int]] = []
+    if lags_avg is None:
+        lags_avg = []
+    lag_options: list[list[int]] = []
 
     if use_lags:
         lag_options = [
@@ -186,12 +192,12 @@ def get_lag_options(use_lags: bool, lags_avg: List[int] = []) -> Tuple[List[List
     return lag_options, lags_avg
 
 
-def get_features_first_stage() -> List[str]:
-    """Loads the variables that are generally permitted in the first part of a two-stage model.
+def get_features_first_stage() -> list[str]:
+    """Load the variables that are generally permitted in the first part of a two-stage model.
+
     Which of these are actually used, depends on the pollutant.
 
     :return: List[str]
 
     """
-    variables = load_json(target_dir="params", target_filename="variables", selector="first_model_var")["var_names"]
-    return variables
+    return load_json(target_dir="params", target_filename="variables", selector="first_model_var")["var_names"]

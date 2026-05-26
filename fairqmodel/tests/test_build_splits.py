@@ -1,4 +1,6 @@
-from datetime import datetime, timedelta
+"""Unit tests for build_splits module."""
+
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -7,13 +9,10 @@ from fairqmodel.build_splits import prepare_folded_input, set_prediction_hour
 
 
 def test_prepare_folded_input():
-    """
-    Checks the returned format, size and content.
-    """
-
+    """Check the returned format, size and content."""
     # Arrange
     time_points = np.arange(
-        datetime(2015, 4, 1), datetime(2019, 12, 24), timedelta(hours=1)
+        datetime(2015, 4, 1, tzinfo=UTC), datetime(2019, 12, 24, tzinfo=UTC), timedelta(hours=1)
     ).astype(datetime)
     dat = pd.DataFrame({"date_time": time_points})
     dat["date_time"] = dat["date_time"].dt.tz_localize("UTC")
@@ -37,18 +36,18 @@ def test_prepare_folded_input():
     # Assert
     assert isinstance(res, list)
     assert all(isinstance(x, dict) for x in res)
-    assert all([set(x.keys()) == target_keys for x in res])
+    assert all(set(x.keys()) == target_keys for x in res)
     assert all(
-        x["ts_fold_max_test_date"] - x["ts_fold_max_train_date"]
-        == timedelta(hours=test_window_size)
-        for x in res
+        x["ts_fold_max_test_date"] - x["ts_fold_max_train_date"] == timedelta(hours=test_window_size) for x in res
     )
 
 
 def test_set_prediction_hour():
+    """Check that set_prediction_hour correctly adjusts max_date to the selected prediction hour."""
     # Arrange
-    max_date_winter = datetime(2022, 11, 11, 11, 11, 11)  # in UTC but tz naive
-    max_date_summer = datetime(2022, 6, 11, 11, 11, 11)  # in UTC but tz naive
+    # tz-naive is intentional: set_prediction_hour uses pytz.localize() which requires tz-naive input
+    max_date_winter = datetime(2022, 11, 11, 11, 11, 11)  # noqa: DTZ001
+    max_date_summer = datetime(2022, 6, 11, 11, 11, 11)  # noqa: DTZ001
 
     prediction_window_size = 46
 
@@ -61,49 +60,25 @@ def test_set_prediction_hour():
     # What are the correct 'max_dates' (UTC) for predictions of 'prediction_window_size' hours
     # starting at 'prediction_hour'(Berlin Time):
     # Winter
-    max_date_target_later_winter = datetime(
-        2022, 11, 10, 14, 11, 11
-    )  # = '2022-11-08 16:11:11' + 46h
-    max_date_target_earlier_winter = datetime(
-        2022, 11, 11, 6, 11, 11
-    )  # = '2022-11-09 08:11:11' + 46h
-    max_date_target_correct_winter = datetime(
-        2022, 11, 11, 11, 11, 11
-    )  # = '2022-11-09 13:11:11' + 46h
+    max_date_target_later_winter = datetime(2022, 11, 10, 14, 11, 11)  # noqa: DTZ001  # = '2022-11-08 16:11:11' + 46h
+    max_date_target_earlier_winter = datetime(2022, 11, 11, 6, 11, 11)  # noqa: DTZ001  # = '2022-11-09 08:11:11' + 46h
+    max_date_target_correct_winter = datetime(2022, 11, 11, 11, 11, 11)  # noqa: DTZ001  # = '2022-11-09 13:11:11' + 46h
 
     # Summer
-    max_date_target_later_summer = datetime(
-        2022, 6, 10, 13, 11, 11
-    )  # = '2022-06-08 15:11:11' + 46h
-    max_date_target_earlier_summer = datetime(
-        2022, 6, 11, 5, 11, 11
-    )  # = '2022-06-09 07:11:11' + 46h
-    max_date_target_correct_summer = datetime(
-        2022, 6, 11, 11, 11, 11
-    )  # = '2022-06-09 13:11:11' + 46h
+    max_date_target_later_summer = datetime(2022, 6, 10, 13, 11, 11)  # noqa: DTZ001  # = '2022-06-08 15:11:11' + 46h
+    max_date_target_earlier_summer = datetime(2022, 6, 11, 5, 11, 11)  # noqa: DTZ001  # = '2022-06-09 07:11:11' + 46h
+    max_date_target_correct_summer = datetime(2022, 6, 11, 11, 11, 11)  # noqa: DTZ001  # = '2022-06-09 13:11:11' + 46h
 
     # Act
     # Winter
-    res_later_winter = set_prediction_hour(
-        prediction_hour_later, max_date_winter, prediction_window_size
-    )
-    res_earlier_winter = set_prediction_hour(
-        prediction_hour_earlier, max_date_winter, prediction_window_size
-    )
-    res_correct_winter = set_prediction_hour(
-        prediction_hour_correct_winter, max_date_winter, prediction_window_size
-    )
+    res_later_winter = set_prediction_hour(prediction_hour_later, max_date_winter, prediction_window_size)
+    res_earlier_winter = set_prediction_hour(prediction_hour_earlier, max_date_winter, prediction_window_size)
+    res_correct_winter = set_prediction_hour(prediction_hour_correct_winter, max_date_winter, prediction_window_size)
 
     # Summer
-    res_later_summer = set_prediction_hour(
-        prediction_hour_later, max_date_summer, prediction_window_size
-    )
-    res_earlier_summer = set_prediction_hour(
-        prediction_hour_earlier, max_date_summer, prediction_window_size
-    )
-    res_correct_summer = set_prediction_hour(
-        prediction_hour_correct_summer, max_date_summer, prediction_window_size
-    )
+    res_later_summer = set_prediction_hour(prediction_hour_later, max_date_summer, prediction_window_size)
+    res_earlier_summer = set_prediction_hour(prediction_hour_earlier, max_date_summer, prediction_window_size)
+    res_correct_summer = set_prediction_hour(prediction_hour_correct_summer, max_date_summer, prediction_window_size)
 
     # Assert
     # Correct date winter

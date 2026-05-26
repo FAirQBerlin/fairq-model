@@ -1,21 +1,18 @@
-import logging
-from logging.config import dictConfig
-from typing import List, Optional
+"""Preprocess input data for model training and prediction."""
 
 import pandas as pd
+from loguru import logger
 
 from fairqmodel.retrieve_data import retrieve_cap_values
-from logging_config.logger_config import get_logger_config
-
-dictConfig(get_logger_config())
 
 
 def fix_column_types(
     dat: pd.DataFrame,
-    categorical_feature_cols: List[str],
-    metric_feature_cols: List[str],
+    categorical_feature_cols: list[str],
+    metric_feature_cols: list[str],
 ) -> pd.DataFrame:
-    """Changes the dtype of variables to either float or category.
+    """Change the dtype of variables to either float or category.
+
     This is required as a pre-processing step, because some
     variables are stored in a different dtype in the DB.
     The date_time column is converted to type date_time.
@@ -31,8 +28,8 @@ def fix_column_types(
     train_lags = [col for col in dat.columns if "_train" in col]
     all_metric_cols = metric_feature_cols + train_lags
 
-    dat = dat.astype({x: "category" for x in categorical_feature_cols})
-    dat = dat.astype({x: "float" for x in all_metric_cols})
+    dat = dat.astype(dict.fromkeys(categorical_feature_cols, "category"))
+    dat = dat.astype(dict.fromkeys(all_metric_cols, "float"))
     dat.date_time = pd.to_datetime(dat.date_time)
 
     # temporarily fix possible float categories,
@@ -45,8 +42,8 @@ def fix_column_types(
 
 
 def drop_stations_without_this_depvar(dat: pd.DataFrame, depvar: str) -> pd.DataFrame:
-    """
-    Drop all stations that don't deliver any value for the selected dependent variable.
+    """Drop all stations that don't deliver any value for the selected dependent variable.
+
     Predictions should only be made if a station delivers the variable because otherwise the target value and the lags
     will be unknown.
     It's only checked if any value is given, not if all values in the past are given. There should not be any gaps in
@@ -55,14 +52,14 @@ def drop_stations_without_this_depvar(dat: pd.DataFrame, depvar: str) -> pd.Data
     :param depvar: str, Dependent variable, can be "no2", "pm10", or "pm25"
     :return: pd.DataFrame, Comprised of the same columns and maybe fewer rows
     """
-    any_depvar_value = dat.groupby("station_id").apply(lambda x: any(x[depvar].notnull()), include_groups=False)
+    any_depvar_value = dat.groupby("station_id").apply(lambda x: any(x[depvar].notna()), include_groups=False)
     stations_with_this_depvar = any_depvar_value.index[any_depvar_value]
-    dat = dat.loc[dat.station_id.isin(stations_with_this_depvar)]
-    return dat
+    return dat.loc[dat.station_id.isin(stations_with_this_depvar)]
 
 
-def cap_outliers(dat: pd.DataFrame, cap_values: Optional[pd.DataFrame] = None) -> pd.DataFrame:
-    """Extreme outliers are removed from the dependent variables by capping them at the given values.
+def cap_outliers(dat: pd.DataFrame, cap_values: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Remove extreme outliers from the dependent variables by capping them at the given values.
+
     The default cap values are the 0.999 quantiles from the data, calculated on the data from [2015-01-01, 2023-01-01].
     If no cap values are specified, they are accessed by the retrieve_cap_values() function from the DB
     (i.e. from db table fairq_(prod_)output.cap_values)
@@ -72,7 +69,6 @@ def cap_outliers(dat: pd.DataFrame, cap_values: Optional[pd.DataFrame] = None) -
 
     :return:pd.DataFrame
     """
-
     # Access cap values
     if cap_values is None:
         cap_values = retrieve_cap_values()
@@ -91,18 +87,17 @@ def cap_outliers(dat: pd.DataFrame, cap_values: Optional[pd.DataFrame] = None) -
     dat.loc[outliers_pm10, "pm10"] = cap_pm10
     dat.loc[outliers_pm25, "pm25"] = cap_pm25
 
-    logging.info(
-        "Number of outliers capped: no2: {}, pm10: {}, pm25: {}".format(
-            outliers_no2.values.sum(), outliers_pm10.values.sum(), outliers_pm25.values.sum()
-        )
+    logger.info(
+        f"Number of outliers capped: no2: {outliers_no2.sum()},"
+        f" pm10: {outliers_pm10.sum()}, pm25: {outliers_pm25.sum()}"
     )
 
     return dat
 
 
-def cap_high_values(dat: pd.DataFrame, depvar: str, cap_values: Optional[pd.DataFrame] = None) -> pd.DataFrame:
-    """Caps all columns corresponding to the specified depvar (the depvar column itself and its lags)
-    to allow for more stable training.
+def cap_high_values(dat: pd.DataFrame, depvar: str, cap_values: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Cap all columns corresponding to the specified depvar to allow for more stable training.
+
     NOTE: The goal of this function is to cap unreasonable large input values before model training.
           As this step is performed after the lags have been constructed, the lag_avg feature was calculated from
           un-capped values. If the lag_avg in total is above the cap_value, it is capped. However, it is not capped

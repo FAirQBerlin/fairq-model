@@ -1,105 +1,65 @@
-from datetime import datetime
+"""Unit tests for time_handling module."""
 
 import pandas as pd
-import pytz
 
-from fairqmodel.time_handling import to_unix_datetime, to_unix_series
-
-
-def test_to_unix_series():
-    # Arrange
-    date_winter = "2022-11-22 09:22:49"
-    date_summer = "2022-06-22 09:22:49"
-    dat = pd.DataFrame(
-        {
-            "date_column_naive": [
-                pd.Timestamp(date_summer),
-                pd.Timestamp(date_winter),
-            ],
-            "date_column_utc": [
-                pd.Timestamp(date_summer, tz="UTC"),
-                pd.Timestamp(date_winter, tz="UTC"),
-            ],
-            "date_column_berlin": [
-                pd.Timestamp(date_summer, tz="Europe/Berlin"),
-                pd.Timestamp(date_winter, tz="Europe/Berlin"),
-            ],
-        }
-    )
-    # Calculated with 'https://unixtime.org/'
-    date_target_utc_winter = 1669108969
-    date_target_berlin_winter = 1669105369
-
-    date_target_utc_summer = 1655889769
-    date_target_berlin_summer = 1655882569
-
-    # Act
-    res_naive = to_unix_series(dat["date_column_naive"])
-    res_utc = to_unix_series(dat["date_column_utc"])
-    res_berlin = to_unix_series(dat["date_column_berlin"])
-
-    # Assert
-    # Summer time
-    assert date_target_utc_summer == res_naive.values[0]
-    assert date_target_utc_summer == res_utc.values[0]
-    assert date_target_berlin_summer == res_berlin.values[0]
-
-    # Winter time
-    assert date_target_utc_winter == res_naive.values[1]
-    assert date_target_utc_winter == res_utc.values[1]
-    assert date_target_berlin_winter == res_berlin.values[1]
-
-    # Difference between Berlin and UTC
-    # Winter time
-    assert (res_naive.values[1] - res_berlin.values[1]) == 3600
-
-    # Summer time
-    assert (res_naive.values[0] - res_berlin.values[0]) == 7200
+from fairqmodel.time_handling import (
+    get_current_local_time,
+    get_model_start_time,
+    timestamp_to_tz_aware,
+)
 
 
-def test_to_unix_datetime():
-    # Arrange
-    date_naive_summer = datetime(2022, 6, 22, 9, 22, 49)
-    date_naive_winter = datetime(2022, 11, 22, 9, 22, 49)
+def test_get_current_local_time_returns_berlin_time():
+    """Check that get_current_local_time returns a timezone-aware Berlin datetime."""
+    result = get_current_local_time()
+    assert result.tzinfo is not None
+    assert result.tzinfo.zone == "Europe/Berlin"
 
-    date_utc_summer = datetime(2022, 6, 22, 9, 22, 49, tzinfo=pytz.utc)
-    date_utc_winter = datetime(2022, 11, 22, 9, 22, 49, tzinfo=pytz.utc)
 
-    # NOTE:
-    # datetime(.., tzinfo = pytz.some_time_zone) doesn't work for time zones with daylight saving, e.g. "Europe/Berlin"
-    # See: 'https://pytz.sourceforge.net/#localized-times-and-date-arithmetic'
-    date_berlin_summer = pytz.timezone("Europe/Berlin").localize(datetime(2022, 6, 22, 9, 22, 49))
-    date_berlin_winter = pytz.timezone("Europe/Berlin").localize(datetime(2022, 11, 22, 9, 22, 49))
+def test_get_current_local_time_no_microseconds():
+    """Check that get_current_local_time returns a datetime with no microseconds."""
+    result = get_current_local_time()
+    assert result.microsecond == 0
 
-    # Calculated with 'https://unixtime.org/'
-    date_target_utc_winter = 1669108969
-    date_target_berlin_winter = 1669105369
 
-    date_target_utc_summer = 1655889769
-    date_target_berlin_summer = 1655882569
+def test_get_model_start_time_returns_timestamp():
+    """Check that get_model_start_time returns a pd.Timestamp."""
+    result = get_model_start_time()
+    assert isinstance(result, pd.Timestamp)
 
-    # Act
-    res_naive_summer = to_unix_datetime(date_naive_summer)
-    res_naive_winter = to_unix_datetime(date_naive_winter)
-    res_utc_summer = to_unix_datetime(date_utc_summer)
-    res_utc_winter = to_unix_datetime(date_utc_winter)
-    res_berlin_summer = to_unix_datetime(date_berlin_summer)
-    res_berlin_winter = to_unix_datetime(date_berlin_winter)
 
-    # Assert
-    # Summer time
-    assert date_target_utc_summer == res_naive_summer
-    assert date_target_utc_summer == res_utc_summer
-    assert date_target_berlin_summer == res_berlin_summer
+def test_get_model_start_time_twice_daily_is_5_or_15():
+    """Check that twice_daily model start time is either 5 or 15."""
+    result = get_model_start_time(twice_daily=True)
+    assert result.hour in (5, 15)
 
-    # Winter time
-    assert date_target_utc_winter == res_naive_winter
-    assert date_target_utc_winter == res_utc_winter
-    assert date_target_berlin_winter == res_berlin_winter
 
-    # Difference between Berlin and UTC
-    # Winter time
-    assert (res_naive_winter - res_berlin_winter) == 3600
+def test_get_model_start_time_not_twice_daily_returns_current_hour():
+    """Check that non-twice-daily model start time matches the current hour."""
+    result = get_model_start_time(twice_daily=False)
+    current_hour = get_current_local_time().replace(second=0, minute=0).hour
+    assert result.hour == current_hour
 
-    # Summer time
-    assert (res_naive_summer - res_berlin_summer) == 7200
+
+def test_timestamp_to_tz_aware_naive_utc():
+    """Check that a tz-naive timestamp is localized to UTC and converted to Berlin time."""
+    ts = pd.Timestamp("2023-01-01 12:00:00")
+    result = timestamp_to_tz_aware(ts)
+    assert result.tzinfo is not None
+    assert str(result.tzinfo) == "Europe/Berlin"
+
+
+def test_timestamp_to_tz_aware_already_tz_aware():
+    """Check that a UTC-aware timestamp is converted to Berlin time."""
+    ts = pd.Timestamp("2023-01-01 12:00:00", tz="UTC")
+    result = timestamp_to_tz_aware(ts)
+    assert result.tzinfo is not None
+    assert str(result.tzinfo) == "Europe/Berlin"
+
+
+def test_timestamp_to_tz_aware_utc_offset_winter():
+    """Check that UTC+0 is correctly converted to UTC+1 in Berlin winter time."""
+    # In winter Berlin is UTC+1
+    ts = pd.Timestamp("2023-01-01 10:00:00", tz="UTC")
+    result = timestamp_to_tz_aware(ts)
+    assert result.hour == 11  # noqa: PLR2004 - Berlin winter time is UTC+1, so 10:00 UTC = 11:00 Berlin

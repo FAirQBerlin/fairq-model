@@ -1,11 +1,13 @@
-import os
+"""Integration tests for process_batch module."""
+
+import pytest
 
 from fairqmodel.process_batch import process_batch
 
-def test_process_batch_grid():
-    # if "INWT-L" not in os.uname()[1]:  # currently only local testing
-    #     pytest.skip("no yet supported on jenkins")
 
+@pytest.mark.tests_on_real_clickhouse
+def test_process_batch_grid():
+    """Check that a grid batch is processed successfully and returns the expected report."""
     # arrange
     msg = "{'batch_id': '1', 'depvar': 'no2'}"
     exp = {"batch": 1, "finished": True}
@@ -16,10 +18,10 @@ def test_process_batch_grid():
     # assert
     assert res == exp
 
-def test_process_batch_grid_sim():
-    # if "INWT-L" not in os.uname()[1]:  # currently only local testing
-    #     pytest.skip("no yet supported on jenkins")
 
+@pytest.mark.tests_on_real_clickhouse
+def test_process_batch_grid_sim():
+    """Check that a grid_sim batch is processed successfully and returns the expected report."""
     # arrange
     msg = "{'batch_id': '1', 'depvar': 'no2'}"
     exp = {"batch": 1, "finished": True}
