@@ -1,3 +1,3 @@
 """fairqmodel: Machine learning models for air quality forecasting."""
 
-__version__ = "2026.05.3"
+__version__ = "2026.06.0"
