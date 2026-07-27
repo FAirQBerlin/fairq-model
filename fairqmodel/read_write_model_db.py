@@ -93,11 +93,23 @@ def retrieve_model_from_db(model_id: int) -> ModelWrapper:
 
     depvar = dat_models["pollutant"].item()
 
+    description = dat_models["description"].item() if "description" in dat_models.columns else None
+    description_residuals = (
+        dat_models["description_residuals"].item() if "description_residuals" in dat_models.columns else None
+    )
+    # Normalize NaN to None
+    if description is not None and pd.isna(description):
+        description = None
+    if description_residuals is not None and pd.isna(description_residuals):
+        description_residuals = None
+
     # Build wrapper
     return ModelWrapper(
         depvar=depvar,
         model_1=model_1,
         model_2=model_2,
+        description=description,
+        description_residuals=description_residuals,
     )
 
 

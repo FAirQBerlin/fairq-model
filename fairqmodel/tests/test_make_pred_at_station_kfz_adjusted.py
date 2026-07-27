@@ -8,7 +8,6 @@ from fairqmodel.command_line_args import get_command_args
 from fairqmodel.db_connect import db_connect_target, get_query
 from fairqmodel.prediction_kfz_adjusted import prediction_kfz_adjusted
 from fairqmodel.prediction_t_plus_k import get_model_settings
-from fairqmodel.read_write_model_aux_functions import model_name_str
 from fairqmodel.time_handling import get_current_local_time
 
 
@@ -31,11 +30,7 @@ def test_make_pred_at_station_kfz_adjusted():
 
     model_id = model_id.model_id[0]
 
-    query_params_model = {"model_type": model_name_str(model_type), "depvar": depvar}
-    with db_connect_target() as db:
-        available_models = db.query_dataframe(get_query("available_models"), params=query_params_model)
-
-    model_settings = get_model_settings(available_models, model_id)
+    model_settings = get_model_settings(model_id)
 
     # Select Settings for prediction
     date_min = get_current_local_time().strftime("%Y-%m-%d")

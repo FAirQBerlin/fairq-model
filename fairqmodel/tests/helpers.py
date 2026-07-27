@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 
 from fairqmodel.data_preprocessing import fix_column_types
-from fairqmodel.db_connect import db_connect_target, get_query
 from fairqmodel.prediction_t_plus_k import get_model_settings
 from fairqmodel.time_features import time_features
 
@@ -24,11 +23,7 @@ def arrange_for_lag_pred_tests() -> tuple[pd.DataFrame, dict, pd.Timestamp, list
     :return: Tuple[pd.DataFrame, dict, pd.Timestamp, List[str]]
     """
     # Load a pre-trained dummy model and retrieve its parameters
-    query_params = {"model_type": "full_data_temporal", "depvar": "pm25"}
-    with db_connect_target() as db:
-        available_models = db.query_dataframe(get_query("available_models"), params=query_params)
-
-    model_settings = get_model_settings(available_models, 1350)
+    model_settings = get_model_settings(1350)
 
     depvar = model_settings["depvar"]
     features = list(set(model_settings["feature_cols"]))

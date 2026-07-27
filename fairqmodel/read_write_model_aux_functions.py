@@ -7,24 +7,6 @@ import numpy as np
 import xgboost as xgb
 
 
-def model_name_str(target: str = "all") -> str:
-    """Construct the full model name for the selected type of model.
-
-    E.g. 'full_data_spatial', 'full_data_temporal'.
-    This function is used to select/show available models from the DB.
-
-    :param target: str, Type of models to select, must be one of "spatial", "temporal", "all"
-    :return: str, Model name by which the models are selected.
-    """
-    assert target in ["spatial", "temporal", "all"]
-
-    # The 'model_name' is used inside an SQL query
-    # If "all" is selected, the string-wildcard '%' is used as target
-    name = "full_data"
-    temp_target = "%" if target == "all" else target
-    return f"{name}_{temp_target}"
-
-
 def model_from_str(model_object_str) -> xgb.Booster:
     """Convert a model from string representation to xgb format.
 

@@ -7,13 +7,11 @@ from optuna.samplers import TPESampler
 
 from fairqmodel.build_splits import prepare_folded_input, slice_data_frame
 from fairqmodel.data_preprocessing import cap_high_values
-from fairqmodel.db_connect import db_connect_target, get_query
 from fairqmodel.feature_selection import assign_features_to_stage
 from fairqmodel.model_parameters import get_xgboost_param
 from fairqmodel.model_wrapper import ModelWrapper
 from fairqmodel.prediction_lag_adjusted import make_lag_adjusted_prediction
 from fairqmodel.prediction_t_plus_k import get_model_settings
-from fairqmodel.read_write_model_aux_functions import model_name_str
 from fairqmodel.train_model_in_hpo import train_hpo
 
 SECOND_STAGE = 2
@@ -341,11 +339,8 @@ def manual_cv_t_plus_k(
             # Load first model if second stage is optimized
             if optimize_stage == SECOND_STAGE:
                 logger.info("Load first stage")
-                query_params = {"model_type": model_name_str("all"), "depvar": depvar}
-                with db_connect_target() as db:
-                    available_models = db.query_dataframe(get_query("available_models"), params=query_params)
                 assert first_stage_model_id is not None
-                model_settings = get_model_settings(available_models, first_stage_model_id)
+                model_settings = get_model_settings(first_stage_model_id)
                 first_stage_model = model_settings["models"].model_1
             else:
                 first_stage_model = None

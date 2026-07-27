@@ -6,7 +6,6 @@ import pandas as pd
 from IPython.display import display
 from prettytable import PrettyTable
 
-from fairqmodel.db_connect import db_connect_target, get_query
 from fairqmodel.model_parameters import get_pollution_limits
 from fairqmodel.prediction_kfz_adjusted import (
     make_predictions_with_adjusted_kfz_percentage,
@@ -17,7 +16,6 @@ from fairqmodel.prediction_kfz_adjusted import (
     select_day,
 )
 from fairqmodel.prediction_t_plus_k import get_model_settings
-from fairqmodel.read_write_model_aux_functions import model_name_str
 
 
 def transgression_count(
@@ -273,12 +271,7 @@ def calculate_suggestions(
     :return: Tuple[List[str], dict], Suggested percentages
     """
     # Load the model
-    model_type = "all"
-    query_params = {"model_type": model_name_str(model_type), "depvar": depvar}
-    with db_connect_target() as db:
-        available_models = db.query_dataframe(get_query("available_models"), params=query_params)
-
-    model_settings = get_model_settings(available_models, model_id)
+    model_settings = get_model_settings(model_id)
 
     # Calculate the suggestions
     suggestions = [

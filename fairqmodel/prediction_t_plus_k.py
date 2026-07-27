@@ -1,5 +1,6 @@
 """Perform t+k predictions over multiple time folds with optional DB writes."""
 
+import ast
 from json import loads
 
 import pandas as pd
@@ -98,18 +99,15 @@ def prediction_t_plus_k(
             )
 
 
-def get_model_settings(available_models: pd.DataFrame, model_id: int) -> dict:
+def get_model_settings(model_id: int) -> dict:
     """Get the settings associated with the selected model_id.
 
-    :param available_models: pd.DataFrame, Containing all currently available models
     :param model_id: int, Id of the selected model
 
     :return: dict, Containing relevant settings, i.e. model_object, variable names,
                 lags and the name of the dependent variable
 
     """
-    assert model_id in available_models.model_id.unique(), "Selected model id not available."
-
     # Prepare objects to make predictions
     models = retrieve_model_from_db(model_id)
     assert models.model_1 is not None, "Retrieved first stage is not set correctly"
@@ -131,17 +129,17 @@ def get_model_settings(available_models: pd.DataFrame, model_id: int) -> dict:
         feature for feature, feature_type in zip(feature_cols, feature_types, strict=False) if feature_type != "c"
     ]
 
-    description_model_1 = loads(
-        available_models.loc[available_models.model_id == model_id, "description"].to_numpy()[0]
-    )
+    if models.description is None:
+        raise ValueError(f"No description metadata found for model_id {model_id}")
+    description_model_1 = loads(models.description)
 
-    lags = eval(description_model_1["lags"])
-    lags_avg = eval(description_model_1["lags_avg"]) if "lags_avg" in description_model_1 else []
-
+    lags = ast.literal_eval(description_model_1["lags"])
+    lags_avg = ast.literal_eval(description_model_1["lags_avg"]) if "lags_avg" in description_model_1 else []
     if models.use_two_stages:
-        description_model_2 = loads(
-            available_models.loc[available_models.model_id == model_id, "description_residuals"].to_numpy()[0]
+        assert models.description_residuals is not None, (
+            f"No residuals description metadata found for model_id {model_id}"
         )
+        description_model_2 = loads(models.description_residuals)
         lags.extend(eval(description_model_2["lags"]))
         if "lags_avg" in description_model_2:
             lags_avg.extend(eval(description_model_2["lags_avg"]))

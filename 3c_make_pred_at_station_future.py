@@ -23,7 +23,6 @@ from fairqmodel.data_preprocessing import (
 from fairqmodel.db_connect import db_connect_target, get_query
 from fairqmodel.get_max_date_time import get_max_date_time
 from fairqmodel.prediction_t_plus_k import get_model_settings, prediction_t_plus_k
-from fairqmodel.read_write_model_aux_functions import model_name_str
 from fairqmodel.retrieve_data import retrieve_data
 from fairqmodel.time_features import time_features
 from fairqmodel.time_handling import get_model_start_time
@@ -74,12 +73,7 @@ model_id = model_id.model_id[0]
 
 logger.info(f"Using model with id {model_id}, predicting the upcoming {int(forecast_hours)} hours")
 
-query_params = {"model_type": model_name_str(model_type), "depvar": depvar}
-
-with db_connect_target() as db:
-    available_models = db.query_dataframe(get_query("available_models"), params=query_params)
-
-model_settings = get_model_settings(available_models, model_id)
+model_settings = get_model_settings(model_id)
 
 models = model_settings["models"]
 depvar = model_settings["depvar"]

@@ -19,6 +19,8 @@ class ModelWrapper:
         feature_cols_1: list[str] | None = None,
         feature_cols_2: list[str] | None = None,
         dev: bool = False,
+        description: str | None = None,
+        description_residuals: str | None = None,
     ) -> None:
         """Wrap xgb models to allow for flexible use of either one or two models.
 
@@ -32,6 +34,8 @@ class ModelWrapper:
         :param feature_cols_1: Optional[List[str]], Contains the features used for model_1
         :param feature_cols_2: Optional[List[str]], Contains the features used for model_2
         :param dev: bool, Specifies if development settings will be selected
+        :param description: Optional[str], JSON description of the first model (metadata from DB)
+        :param description_residuals: Optional[str], JSON description of the second model (metadata from DB)
 
         :return: None
         """
@@ -45,6 +49,8 @@ class ModelWrapper:
         self.feature_cols_1 = feature_cols_1
         self.feature_cols_2 = feature_cols_2
         self.dev = dev
+        self.description = description
+        self.description_residuals = description_residuals
         self.use_sample_weights = self.depvar in ["pm10", "pm25"]
 
         # Infer settings from provided parameters
